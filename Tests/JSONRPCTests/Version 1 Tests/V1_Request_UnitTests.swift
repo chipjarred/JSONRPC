@@ -22,11 +22,11 @@ class V1_Request_UnitTests: XCTestCase
         let json =
             #"{ "method": "echo", "params": [], "id": 1}"#
 
-        let request: Request
+        let request: GeneralRequest
         do
         {
             request = try JSONDecoder()
-                .decode(Request.self, from: json.data(using: .utf8)!)
+                .decode(GeneralRequest.self, from: json.data(using: .utf8)!)
         }
         catch
         {
@@ -54,11 +54,11 @@ class V1_Request_UnitTests: XCTestCase
         let json =
             #"{ "method": "echo", "params": ["Hello JSON-RPC"], "id": 1}"#
 
-        let request: Request
+        let request: GeneralRequest
         do
         {
             request = try JSONDecoder()
-                .decode(Request.self, from: json.data(using: .utf8)!)
+                .decode(GeneralRequest.self, from: json.data(using: .utf8)!)
         }
         catch
         {
@@ -92,11 +92,11 @@ class V1_Request_UnitTests: XCTestCase
         let json =
             #"{ "method": "echo", "params": ["Hello JSON-RPC", 5], "id": 1}"#
 
-        let request: Request
+        let request: GeneralRequest
         do
         {
             request = try JSONDecoder()
-                .decode(Request.self, from: json.data(using: .utf8)!)
+                .decode(GeneralRequest.self, from: json.data(using: .utf8)!)
         }
         catch
         {
@@ -137,7 +137,7 @@ class V1_Request_UnitTests: XCTestCase
         let expected =
             #"{"id":1,"method":"echo","params":[]}"#
         
-        let request = Request(version: .v1, id: 1, method: "echo")
+        let request = GeneralRequest(version: .v1, id: 1, method: "echo")
         
         let jsonData: Data
         do { jsonData = try JSONEncoder().encode(request) }
@@ -158,7 +158,7 @@ class V1_Request_UnitTests: XCTestCase
         let expected =
             #"{"id":1,"method":"echo","params":[]}"#
         
-        let request = Request(version: .v1, id: 1, method: "echo", params: [])
+        let request = GeneralRequest(version: .v1, id: 1, method: "echo", params: [])
         
         let jsonData: Data
         do { jsonData = try JSONEncoder().encode(request) }
@@ -179,7 +179,7 @@ class V1_Request_UnitTests: XCTestCase
         let expected =
             #"{"id":1,"method":"echo","params":["Hello JSON-RPC"]}"#
         
-        let request = Request(
+        let request = GeneralRequest(
             version: .v1,
             id: 1,
             method: "echo",
@@ -205,7 +205,7 @@ class V1_Request_UnitTests: XCTestCase
         let expected =
             #"{"id":1,"method":"echo","params":["Hello JSON-RPC",5]}"#
         
-        let request = Request(
+        let request = GeneralRequest(
             version: .v1, 
             id: 1,
             method: "echo",

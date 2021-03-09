@@ -21,7 +21,7 @@
 import Foundation
 
 // -------------------------------------
-public struct Request: Codable
+public struct Request
 {
     // -------------------------------------
     public enum Parameters: Codable
@@ -73,6 +73,48 @@ public struct Request: Codable
             }
         }
     }
+
+    @inlinable public var version: Version { Version(rawValue: jsonrpc)! }
+    
+    public let jsonrpc: String? // For version 2 JSON-RPC
+    public let id: Int
+    public let method: String
+    public let params: Parameters?
+    
+    // -------------------------------------
+    @usableFromInline
+    internal init(from request: GeneralRequest)
+    {
+        precondition(request.id != nil, "Request must have an id")
+        
+        self.init(
+            version: request.version,
+            id: request.id!,
+            method: request.method,
+            params: request.params
+        )
+    }
+    
+    // -------------------------------------
+    @usableFromInline
+    internal init(
+        version: Version,
+        id: Int,
+        method: String,
+        params: Parameters?)
+    {
+        self.jsonrpc = version.rawValue
+        self.id = id
+        self.method = method
+        self.params = params
+    }
+}
+
+// -------------------------------------
+@usableFromInline
+internal struct GeneralRequest: Codable
+{
+    public typealias Parameters = Request.Parameters
     
     @inlinable public var version: Version { Version(rawValue: jsonrpc)! }
     

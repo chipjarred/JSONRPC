@@ -470,7 +470,7 @@ class V1_Response_UnitTests: XCTestCase
         let expected =
             #"{"id":1,"result":true,"error":null}"#
 
-        let request = Request(version: .v1, id: 1, method: "echo")
+        let request = GeneralRequest(version: .v1, id: 1, method: "echo")
         let response = Response(for: request, result: true)
 
         let jsonData: Data
@@ -492,7 +492,7 @@ class V1_Response_UnitTests: XCTestCase
         let expected =
             #"{"id":1,"result":42,"error":null}"#
 
-        let request = Request(version: .v1, id: 1, method: "echo")
+        let request = GeneralRequest(version: .v1, id: 1, method: "echo")
         let response = Response(for: request, result: 42)
 
         let jsonData: Data
@@ -514,7 +514,7 @@ class V1_Response_UnitTests: XCTestCase
         let expected =
             #"{"id":1,"result":42.5,"error":null}"#
 
-        let request = Request(version: .v1, id: 1, method: "echo")
+        let request = GeneralRequest(version: .v1, id: 1, method: "echo")
         let response = Response(for: request, result: 42.5)
 
         let jsonData: Data
@@ -536,7 +536,7 @@ class V1_Response_UnitTests: XCTestCase
         let expected =
             #"{"id":1,"result":"Belgium, man. Belgium!","error":null}"#
 
-        let request = Request(version: .v1, id: 1, method: "echo")
+        let request = GeneralRequest(version: .v1, id: 1, method: "echo")
         let response = Response(
             for: request,
             result: "Belgium, man. Belgium!"
@@ -561,7 +561,7 @@ class V1_Response_UnitTests: XCTestCase
         let expected =
             #"{"id":1,"result":[],"error":null}"#
 
-        let request = Request(version: .v1, id: 1, method: "echo")
+        let request = GeneralRequest(version: .v1, id: 1, method: "echo")
         let response = Response(for: request, result: [])
 
         let jsonData: Data
@@ -583,7 +583,7 @@ class V1_Response_UnitTests: XCTestCase
         let expected =
             #"{"id":1,"result":[42],"error":null}"#
 
-        let request = Request(version: .v1, id: 1, method: "echo")
+        let request = GeneralRequest(version: .v1, id: 1, method: "echo")
         let response = Response(for: request, result: [42])
 
         let jsonData: Data
@@ -606,7 +606,7 @@ class V1_Response_UnitTests: XCTestCase
             #"{"id":1,"result":[42,"Ford, what's this fish doing in my ear?"]"#
             + #","error":null}"#
 
-        let request = Request(version: .v1, id: 1, method: "echo")
+        let request = GeneralRequest(version: .v1, id: 1, method: "echo")
         let response = Response(
             for: request,
             result: [42, "Ford, what's this fish doing in my ear?"]
@@ -631,7 +631,7 @@ class V1_Response_UnitTests: XCTestCase
         let expected =
             #"{"id":1,"result":{},"error":null}"#
 
-        let request = Request(version: .v1, id: 1, method: "echo")
+        let request = GeneralRequest(version: .v1, id: 1, method: "echo")
         let response = Response(for: request, result: [:])
 
         let jsonData: Data
@@ -653,7 +653,7 @@ class V1_Response_UnitTests: XCTestCase
         let expected =
             #"{"id":1,"result":{"answer":42},"error":null}"#
 
-        let request = Request(version: .v1, id: 1, method: "echo")
+        let request = GeneralRequest(version: .v1, id: 1, method: "echo")
         let response = Response(for: request, result: ["answer": 42])
 
         let jsonData: Data
@@ -676,7 +676,7 @@ class V1_Response_UnitTests: XCTestCase
             #"{"id":1,"result":{"answer":42,"question":"#
             + #""What do you get when you multiply 6 by 9?"},"error":null}"#
 
-        let request = Request(version: .v1, id: 1, method: "echo")
+        let request = GeneralRequest(version: .v1, id: 1, method: "echo")
         let response = Response(
             for: request,
             result:
@@ -710,7 +710,7 @@ class V1_Response_UnitTests: XCTestCase
             + #""code":42"#
             + #"}}"#
 
-        let request = Request(version: .v1, id: 1, method: "echo")
+        let request = GeneralRequest(version: .v1, id: 1, method: "echo")
         let response = Response(
             for: request,
             error: JSONRPC.Error(

@@ -33,12 +33,56 @@ public struct Response: Codable
     public let error: Error?
     
     // -------------------------------------
-    public init(for request: Request, result: [Any?])
+    internal init(for request: Request, result: [Any?])
     {
-        precondition(
-            request.id != nil,
-            "Nil id on request means notification, and that means no response."
+        self.init(
+            version: request.version,
+            id: request.id,
+            result: .array(result),
+            error: nil
         )
+    }
+
+    // -------------------------------------
+    internal init(for request: Request, result: [String: Any])
+    {
+        self.init(
+            version: request.version,
+            id: request.id,
+            result: .object(result),
+            error: nil
+        )
+    }
+    
+    // -------------------------------------
+    internal init<Object: Codable>(for request: Request, result: Object)
+    {
+        guard let anyData = Result(result) else {
+            fatalError("Unable to encode \(result)")
+        }
+        
+        self.init(
+            version: request.version,
+            id: request.id,
+            result: anyData,
+            error: nil
+        )
+    }
+
+    // -------------------------------------
+    internal init(for request: Request, error: Error)
+    {
+        self.init(
+            version: request.version,
+            id: request.id,
+            result: nil,
+            error: error
+        )
+    }
+    
+    // -------------------------------------
+    internal init(for request: GeneralRequest, result: [Any?])
+    {
         self.init(
             version: request.version,
             id: request.id!,
@@ -46,14 +90,21 @@ public struct Response: Codable
             error: nil
         )
     }
+
+    // -------------------------------------
+    internal init(for request: GeneralRequest, result: [String: Any])
+    {
+        self.init(
+            version: request.version,
+            id: request.id!,
+            result: .object(result),
+            error: nil
+        )
+    }
     
     // -------------------------------------
-    public init<Object: Codable>(for request: Request, result: Object)
+    internal init<Object: Codable>(for request: GeneralRequest, result: Object)
     {
-        precondition(
-            request.id != nil,
-            "Nil id on request means notification, and that means no response."
-        )
         guard let anyData = Result(result) else {
             fatalError("Unable to encode \(result)")
         }
@@ -67,27 +118,8 @@ public struct Response: Codable
     }
 
     // -------------------------------------
-    public init(for request: Request, result: [String: Any])
+    internal init(for request: GeneralRequest, error: Error)
     {
-        precondition(
-            request.id != nil,
-            "Nil id on request means notification, and that means no response."
-        )
-        self.init(
-            version: request.version,
-            id: request.id!,
-            result: .object(result),
-            error: nil
-        )
-    }
-
-    // -------------------------------------
-    public init(for request: Request, error: Error)
-    {
-        precondition(
-            request.id != nil,
-            "Nil id on request means notification, and that means no response."
-        )
         self.init(
             version: request.version,
             id: request.id!,

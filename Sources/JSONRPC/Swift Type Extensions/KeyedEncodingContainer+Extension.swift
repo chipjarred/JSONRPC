@@ -21,13 +21,6 @@
 import Foundation
 
 // -------------------------------------
-internal let runningUnitTests: Bool =
-{
-    let pInfo = ProcessInfo.processInfo
-    return pInfo.environment["XCTestConfigurationFilePath"] != nil
-}()
-
-// -------------------------------------
 extension KeyedEncodingContainer
 {
     // -------------------------------------

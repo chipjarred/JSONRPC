@@ -33,6 +33,18 @@ public struct Notification
 
     // -------------------------------------
     @usableFromInline
+    internal init(from request: GeneralRequest)
+    {
+        precondition(request.id == nil, "Notifications may not have an id")
+        self.init(
+            version: request.version,
+            method: request.method,
+            params: request.params
+        )
+    }
+
+    // -------------------------------------
+    @usableFromInline
     internal init(
         version: Version,
         method: String,

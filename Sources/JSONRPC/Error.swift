@@ -78,15 +78,44 @@ public struct Error: Codable
     public let message: String
     public let data: AnyJSONData?
     
+    /**
+     Invalid JSON was received by the server.
+     
+     An error occurred on the server while parsing the JSON text.
+     */
+    static let parseError = Self(code: .parseError)
+    
+    /// The JSON sent is not a valid Request object.
+    static let invalidRequest = Self(code: .invalidRequest)
+    
+    /// The method does not exist or is not available.
+    static let methodNotFound = Self(code: .methodNotFound)
+    
+    /// Invalid method parameter(s).
+    static let invalidParams = Self(code: .invalidParams)
+    
+    /// Internal JSON-RPC error.
+    static let internalError = Self(code: .internalError)
+
+    
     // -------------------------------------
     @inlinable
-    public init(code: Int, message: String, data: AnyJSONData?)
+    public init(code: Int, message: String, data: AnyJSONData? = nil)
     {
         self.code = code
         self.message = message
         self.data = data
     }
     
+    // -------------------------------------
+    @inlinable
+    public init(code: ErrorCode, data: AnyJSONData? = nil)
+    {
+        self.code = code.rawValue
+        self.message = code.message
+        self.data = data
+    }
+
     // -------------------------------------
     public init(from decoder: Decoder) throws
     {

@@ -30,11 +30,11 @@ class V2_Request_UnitTests: XCTestCase
         let json =
             #"{"jsonrpc":"2.0", "method": "echo", "id": 1}"#
 
-        let request: Request
+        let request: GeneralRequest
         do
         {
             request = try JSONDecoder()
-                .decode(Request.self, from: json.data(using: .utf8)!)
+                .decode(GeneralRequest.self, from: json.data(using: .utf8)!)
         }
         catch
         {
@@ -64,11 +64,11 @@ class V2_Request_UnitTests: XCTestCase
             #"{"jsonrpc":"2.0", "method": "echo", "#
             + #""params": [], "id": 1}"#
 
-        let request: Request
+        let request: GeneralRequest
         do
         {
             request = try JSONDecoder()
-                .decode(Request.self, from: json.data(using: .utf8)!)
+                .decode(GeneralRequest.self, from: json.data(using: .utf8)!)
         }
         catch
         {
@@ -100,11 +100,11 @@ class V2_Request_UnitTests: XCTestCase
             #"{"jsonrpc":"2.0", "method": "echo", "#
             + #""params": ["Hello JSON-RPC"], "id": 1}"#
 
-        let request: Request
+        let request: GeneralRequest
         do
         {
             request = try JSONDecoder()
-                .decode(Request.self, from: json.data(using: .utf8)!)
+                .decode(GeneralRequest.self, from: json.data(using: .utf8)!)
         }
         catch
         {
@@ -142,11 +142,11 @@ class V2_Request_UnitTests: XCTestCase
             #"{"jsonrpc":"2.0", "method": "echo", "#
             + #""params": ["Hello JSON-RPC", 5], "id": 1}"#
 
-        let request: Request
+        let request: GeneralRequest
         do
         {
             request = try JSONDecoder()
-                .decode(Request.self, from: json.data(using: .utf8)!)
+                .decode(GeneralRequest.self, from: json.data(using: .utf8)!)
         }
         catch
         {
@@ -190,11 +190,11 @@ class V2_Request_UnitTests: XCTestCase
             #"{"jsonrpc":"2.0", "method": "echo", "#
             + #""params": {}, "id": 1}"#
 
-        let request: Request
+        let request: GeneralRequest
         do
         {
             request = try JSONDecoder()
-                .decode(Request.self, from: json.data(using: .utf8)!)
+                .decode(GeneralRequest.self, from: json.data(using: .utf8)!)
         }
         catch
         {
@@ -226,11 +226,11 @@ class V2_Request_UnitTests: XCTestCase
             #"{"jsonrpc":"2.0", "method": "echo", "#
             + #""params": {"message":"Hello JSON-RPC"}, "id": 1}"#
 
-        let request: Request
+        let request: GeneralRequest
         do
         {
             request = try JSONDecoder()
-                .decode(Request.self, from: json.data(using: .utf8)!)
+                .decode(GeneralRequest.self, from: json.data(using: .utf8)!)
         }
         catch
         {
@@ -265,11 +265,11 @@ class V2_Request_UnitTests: XCTestCase
             #"{"jsonrpc":"2.0", "method": "echo", "#
             + #""params": {"message":"Hello JSON-RPC", "count": 5}, "id": 1}"#
 
-        let request: Request
+        let request: GeneralRequest
         do
         {
             request = try JSONDecoder()
-                .decode(Request.self, from: json.data(using: .utf8)!)
+                .decode(GeneralRequest.self, from: json.data(using: .utf8)!)
         }
         catch
         {
@@ -307,7 +307,7 @@ class V2_Request_UnitTests: XCTestCase
         let expected =
             #"{"jsonrpc":"2.0","id":1,"method":"echo"}"#
         
-        let request = Request(version: .v2, id: 1, method: "echo")
+        let request = GeneralRequest(version: .v2, id: 1, method: "echo")
         
         let jsonData: Data
         do { jsonData = try JSONEncoder().encode(request) }
@@ -328,7 +328,7 @@ class V2_Request_UnitTests: XCTestCase
         let expected =
             #"{"jsonrpc":"2.0","id":1,"method":"echo"}"#
         
-        let request = Request(
+        let request = GeneralRequest(
             version: .v2,
             id: 1,
             method: "echo",
@@ -355,7 +355,7 @@ class V2_Request_UnitTests: XCTestCase
             #"{"jsonrpc":"2.0","id":1,"method":"echo","#
             + #""params":["Hello JSON-RPC"]}"#
         
-        let request = Request(
+        let request = GeneralRequest(
             version: .v2,
             id: 1,
             method: "echo",
@@ -382,7 +382,7 @@ class V2_Request_UnitTests: XCTestCase
             #"{"jsonrpc":"2.0","id":1,"method":"echo","#
             + #""params":["Hello JSON-RPC",5]}"#
         
-        let request = Request(
+        let request = GeneralRequest(
             version: .v2,
             id: 1,
             method: "echo",
@@ -408,7 +408,7 @@ class V2_Request_UnitTests: XCTestCase
         let expected =
             #"{"jsonrpc":"2.0","id":1,"method":"echo"}"#
         
-        let request = Request(
+        let request = GeneralRequest(
             version: .v2,
             id: 1,
             method: "echo",
@@ -435,7 +435,7 @@ class V2_Request_UnitTests: XCTestCase
             #"{"jsonrpc":"2.0","id":1,"method":"echo","#
             + #""params":{"message":"Hello JSON-RPC"}}"#
 
-        let request = Request(
+        let request = GeneralRequest(
             version: .v2,
             id: 1,
             method: "echo",
@@ -462,7 +462,7 @@ class V2_Request_UnitTests: XCTestCase
             #"{"jsonrpc":"2.0","id":1,"method":"echo","#
             + #""params":{"count":5,"message":"Hello JSON-RPC"}}"#
 
-        let request = Request(
+        let request = GeneralRequest(
             version: .v2,
             id: 1,
             method: "echo",
