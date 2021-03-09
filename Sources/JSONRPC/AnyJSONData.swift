@@ -31,6 +31,16 @@ public enum AnyJSONData: Codable
     case object(_: [String: Any])
     
     // -------------------------------------
+    public init?<T: Codable>(_ value: T)
+    {
+        guard let json = try? JSONEncoder().encode(value),
+              let anyData = try? JSONDecoder().decode(Self.self, from: json)
+        else { return nil }
+        
+        self = anyData
+    }
+    
+    // -------------------------------------
     public init(from decoder: Decoder) throws
     {
         if let value = try Self.decodeSingleValue(from: decoder) {

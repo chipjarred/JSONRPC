@@ -77,7 +77,7 @@ public struct Request: Codable
     @inlinable public var version: Version { Version(rawValue: jsonrpc)! }
     
     public let jsonrpc: String? // For version 2 JSON-RPC
-    public let id: Int
+    public let id: Int?
     public let method: String
     public let params: Parameters?
     
@@ -131,7 +131,7 @@ public struct Request: Codable
     @usableFromInline
     internal init(
         version: Version = .default,
-        id: Int,
+        id: Int?,
         method: String,
         params: Parameters? = nil)
     {

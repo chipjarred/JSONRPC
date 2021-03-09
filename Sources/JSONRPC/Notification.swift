@@ -23,49 +23,23 @@ import Foundation
 // -------------------------------------
 public struct Notification
 {
-    public typealias Result = Response.Result
+    public typealias Parameters = Request.Parameters
     
     @inlinable public var version: Version { Version(rawValue: jsonrpc)! }
     
     public let jsonrpc: String? // For version 2 JSON-RPC
-    public let result: AnyJSONData?
-    public let error: Error?
-    
-    // -------------------------------------
-    public init(version: Version, result: AnyJSONData) {
-        self.init(version: version, result: result, error: nil)
-    }
-    
-    // -------------------------------------
-    public init(version: Version, error: Error) {
-        self.init(version: version, result: nil, error: error)
-    }
-    
-    // -------------------------------------
-    internal init(from response: Response)
-    {
-        self.init(
-            version: response.version,
-            result: response.result,
-            error: response.error
-        )
-    }
-    
+    public let method: String
+    public let params: Parameters?
+
     // -------------------------------------
     @usableFromInline
     internal init(
         version: Version,
-        result: Result?,
-        error: Error?)
+        method: String,
+        params: Parameters?)
     {
-        precondition(
-            (result == nil) != (error == nil),
-            "Either result must be non-nil and error nil, or result must be"
-            + " nil and error non-nil"
-        )
-        
         self.jsonrpc = version.rawValue
-        self.result = result
-        self.error = error
+        self.method = method
+        self.params = params
     }
 }

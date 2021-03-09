@@ -28,71 +28,54 @@ public struct Response: Codable
     @inlinable public var version: Version { Version(rawValue: jsonrpc)! }
 
     public let jsonrpc: String? // For version 2 JSON-RPC
-    public let id: Int?
+    public let id: Int
     public let result: Result?
     public let error: Error?
     
     // -------------------------------------
-    public init(for request: Request, result: Bool)
-    {
-        self.init(
-            version: request.version,
-            id: request.id,
-            result: .boolean(result),
-            error: nil
-        )
-    }
-    
-    // -------------------------------------
-    public init(for request: Request, result: Int)
-    {
-        self.init(
-            version: request.version,
-            id: request.id,
-            result: .integer(result),
-            error: nil
-        )
-    }
-    
-    // -------------------------------------
-    public init(for request: Request, result: Double)
-    {
-        self.init(
-            version: request.version,
-            id: request.id,
-            result: .double(result),
-            error: nil
-        )
-    }
-    
-    // -------------------------------------
-    public init(for request: Request, result: String)
-    {
-        self.init(
-            version: request.version,
-            id: request.id,
-            result: .string(result),
-            error: nil
-        )
-    }
-    
-    // -------------------------------------
     public init(for request: Request, result: [Any?])
     {
+        precondition(
+            request.id != nil,
+            "Nil id on request means notification, and that means no response."
+        )
         self.init(
             version: request.version,
-            id: request.id,
+            id: request.id!,
             result: .array(result),
             error: nil
         )
     }
     
     // -------------------------------------
-    public init(for request: Request, result: [String: Any])
+    public init<Object: Codable>(for request: Request, result: Object)
     {
+        precondition(
+            request.id != nil,
+            "Nil id on request means notification, and that means no response."
+        )
+        guard let anyData = Result(result) else {
+            fatalError("Unable to encode \(result)")
+        }
+        
         self.init(
             version: request.version,
-            id: request.id,
+            id: request.id!,
+            result: anyData,
+            error: nil
+        )
+    }
+
+    // -------------------------------------
+    public init(for request: Request, result: [String: Any])
+    {
+        precondition(
+            request.id != nil,
+            "Nil id on request means notification, and that means no response."
+        )
+        self.init(
+            version: request.version,
+            id: request.id!,
             result: .object(result),
             error: nil
         )
@@ -101,22 +84,15 @@ public struct Response: Codable
     // -------------------------------------
     public init(for request: Request, error: Error)
     {
+        precondition(
+            request.id != nil,
+            "Nil id on request means notification, and that means no response."
+        )
         self.init(
             version: request.version,
-            id: request.id,
+            id: request.id!,
             result: nil,
             error: error
-        )
-    }
-    
-    // -------------------------------------
-    internal init(from notification: Notification)
-    {
-        self.init(
-            version: notification.version,
-            id: nil,
-            result: notification.result,
-            error: notification.error
         )
     }
     
@@ -124,7 +100,7 @@ public struct Response: Codable
     @usableFromInline
     internal init(
         version: Version,
-        id: Int?,
+        id: Int,
         result: Result?,
         error: Error?)
     {
@@ -148,11 +124,7 @@ public struct Response: Codable
         
         self.jsonrpc = try? container.decode(String.self, forKey: "jsonrpc")
 
-        if let id = try? container.decode(Int.self, forKey: "id") {
-            self.id = id
-        }
-        else { self.id = nil } // Notification
-        
+        self.id = try container.decode(Int.self, forKey: "id")
         self.result = try? container.decode(Result.self, forKey: "result")
         self.error = try? container.decode(Error.self, forKey: "error")
         
@@ -192,8 +164,7 @@ public struct Response: Codable
         {   // Version 2
             try container.encode(version, forKey: "jsonrpc")
             
-            // Don't include id for notifications
-            if let id = self.id { try container.encode(id, forKey: "id") }
+            try container.encode(id, forKey: "id")
             
             // Encode either result or error, but not both.
             if let result = self.result {
@@ -215,11 +186,8 @@ public struct Response: Codable
             }
         }
         else
-        {   // Version 1
-            if let id = self.id {
-                try container.encode(id, forKey: "id")
-            }
-            else { try container.encodeNil(forKey: "id") }
+        { // Version 1
+            try container.encode(self.id, forKey: "id")
             
             if let result = self.result {
                 try container.encode(result, forKey: "result")
