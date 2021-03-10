@@ -24,7 +24,7 @@ import Async
 import NIX
 
 // -------------------------------------
-public class JSONRPCSession: JSONRPCResponder, JSONRPCLogger
+public class JSONRPCSession: JSONRPCLogger
 {
     typealias RequestID = Int
     public typealias RequestCompletion = (Response) -> Void
@@ -51,8 +51,18 @@ public class JSONRPCSession: JSONRPCResponder, JSONRPCLogger
     private var completionHandlersMutex = Mutex()
     private var completionHandlers: [RequestID: RequestCompletion] = [:]
     
-    public var encoder = JSONEncoder()
-    public var decoder = JSONDecoder()
+    // -------------------------------------
+    enum State
+    {
+        case initialized
+        case started
+        case quitting
+        case terminated
+    }
+    
+    private var state: State = .initialized
+    
+    public var delegate: JSONRPCSessionDelegate? = nil
     
     // -------------------------------------
     public init(
@@ -66,8 +76,17 @@ public class JSONRPCSession: JSONRPCResponder, JSONRPCLogger
     }
     
     // -------------------------------------
-    deinit
+    deinit { cleanUp() }
+    
+    // -------------------------------------
+    private func cleanUp()
     {
+        guard state != .terminated else { return }
+        state = .quitting
+        defer { state = .terminated }
+        
+        delegate?.sessionWillTerminate()
+
         if let error = NIX.close(peerSocket)
         {
             log(
@@ -77,34 +96,40 @@ public class JSONRPCSession: JSONRPCResponder, JSONRPCLogger
         }
         
         self.log(.info, "Ended session with \(peerAddress).")
+        
+        server.sessionEnded(for: self)
+
+        delegate?.sessionDidTerminate()
+    }
+    
+    // -------------------------------------
+    public func terminate()
+    {
+        self.log(.info, "Session termination requested.")
+        cleanUp()
     }
     
     // -------------------------------------
     internal final func start()
     {
+        delegate?.sessionWillStart()
+        
+        state = .started
         self.log(.info, "Started session with \(peerAddress).")
         
-        defer { server.sessionEnded(for: self) }
+        defer { cleanUp() }
         
         var lineReader = SocketLineReader(logger: self)
         
-        while true
+        delegate?.sessionDidStart()
+        
+        while state != .quitting
         {
             guard let line = lineReader.readLine(from: peerSocket) else {
                 break
             }
             
-            log(.info, "\(Self.self): Received JSON: \"\(line)\"")
-            
-            do
-            {
-                if let response = try translateAndDispatch(jsonData: line)
-                {
-                    try write(response)
-                    log(.info, "\(Self.self): Sent JSON: \"\(response)\"")
-                }
-            }
-            catch { break }
+            dispatch(jsonData: line)
         }
     }
     
@@ -136,14 +161,38 @@ public class JSONRPCSession: JSONRPCResponder, JSONRPCLogger
         }
     }
     
+    // MARK:- Handling incoming messages
     // -------------------------------------
-    public final func handleNotification(_ notification: Notification) {
-        unimplemented()
+    func dispatch(jsonData data: Data)
+    {
+        let decoder = JSONDecoder()
+        if let genRequest = try? decoder.decode(GeneralRequest.self, from: data)
+        {
+            if genRequest.id == nil {
+                handleNotification(Notification(from: genRequest))
+            }
+            else { handleRequest(Request(from: genRequest)) }
+            
+        }
+        else if let response = try? decoder.decode(Response.self, from: data) {
+            handleResponse(response)
+        }
     }
     
     // -------------------------------------
-    public final func handleRequest(_ request: Request) throws -> Response {
-        unimplemented()
+    public final func handleNotification(_ notification: Notification) {
+        _ = async { self.delegate?.handle(notification) }
+    }
+    
+    // -------------------------------------
+    public final func handleRequest(_ request: Request)
+    {
+        _ = async
+        {
+            self.send(self.delegate?.respond(to: request)
+                ?? Response(for: request, error: .methodNotFound)
+            )
+        }
     }
     
     // -------------------------------------
@@ -175,6 +224,7 @@ public class JSONRPCSession: JSONRPCResponder, JSONRPCLogger
         }
     }
     
+    // MARK:- Sending Requests
     // -------------------------------------
     public final func request(
         method: String,
@@ -226,6 +276,7 @@ public class JSONRPCSession: JSONRPCResponder, JSONRPCLogger
         )
     }
     
+    // MARK:- Sending Notifications
     // -------------------------------------
     public final func notify(method: String) {
         notify(method: method, parameters: nil)
@@ -278,7 +329,7 @@ public class JSONRPCSession: JSONRPCResponder, JSONRPCLogger
          If we can't encode the request, immediately manufacture an parse error
          and handle it.
          */
-        guard let data = try? encoder.encode(request) else
+        guard let data = try? JSONEncoder().encode(request) else
         {
             _ = async
             {
@@ -301,8 +352,33 @@ public class JSONRPCSession: JSONRPCResponder, JSONRPCLogger
             }
         }
     }
+    
+    // MARK:- Sending Responses
+    // -------------------------------------
+    private func send(_ response: Response)
+    {
+        let encoder = JSONEncoder()
+        guard let data = try? encoder.encode(response) else
+        {
+            log(.error, "Unable to encode response: \(response)")
+            let errorResponse = Response(
+                    version: versionToUse,
+                    id: response.id,
+                    result: nil,
+                    error: .internalError
+            )
+            if let data = try? encoder.encode(errorResponse) {
+                try? write(data)
+            }
+            return
+        }
+        
+        do { try write(data) }
+        catch { log(.error, "Unable to send response: \(response)") }
+    }
 }
 
+// MARK:- Hashable Conformance
 // -------------------------------------
 extension JSONRPCSession: Hashable
 {
