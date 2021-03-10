@@ -42,9 +42,15 @@ public class JSONRPCServer: JSONRPCLogger
     private static let dispatchQueue =
         DispatchQueue(label: "JSONRPCServer-\(UUID())", attributes: .concurrent)
     
+    private let delegateType: JSONRPCSessionDelegate.Type
+    
     // -------------------------------------
-    public init?(boundTo address: SocketAddress, maximumConnections: Int)
+    public init?<Delegate: JSONRPCSessionDelegate>(
+        boundTo address: SocketAddress,
+        maximumConnections: Int,
+        typeOfDelegate: Delegate.Type)
     {
+        self.delegateType = typeOfDelegate
         let domain: NIX.SocketDomain
         let protocolFamily: NIX.ProtocolFamily
         switch address.family
@@ -130,7 +136,8 @@ public class JSONRPCServer: JSONRPCLogger
                     let clientSession = JSONRPCSession(
                         from: self,
                         forPeerSocket: peerSocket,
-                        at: peerAddress
+                        at: peerAddress,
+                        delegate: delegateType.init()
                     )
                     addSession(clientSession)
                     Self.dispatchQueue.async { clientSession.start() }

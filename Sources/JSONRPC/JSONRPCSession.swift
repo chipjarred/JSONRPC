@@ -29,11 +29,11 @@ public class JSONRPCSession: JSONRPCLogger
     typealias RequestID = Int
     public typealias RequestCompletion = (Response) -> Void
     
-    public unowned var server: JSONRPCServer
+    public unowned var server: JSONRPCServer?
     private let versionToUse: Version = .v2
     
-    private let peerAddress: SocketAddress
-    private let peerSocket: SocketIODescriptor
+    private let address: SocketAddress
+    private let socket: SocketIODescriptor
     
     private var curRequestIDMutex = SpinLock()
     private var _curRequestID: Int = 1
@@ -65,14 +65,53 @@ public class JSONRPCSession: JSONRPCLogger
     public var delegate: JSONRPCSessionDelegate? = nil
     
     // -------------------------------------
-    public init(
+    internal init(
         from server: JSONRPCServer,
         forPeerSocket peerSocket: SocketIODescriptor,
-        at peerAddress: SocketAddress)
+        at peerAddress: SocketAddress,
+        delegate: JSONRPCSessionDelegate)
     {
         self.server = server
-        self.peerSocket = peerSocket
-        self.peerAddress = peerAddress
+        self.socket = peerSocket
+        self.address = peerAddress
+        self.state = .initialized
+    }
+    
+    // -------------------------------------
+    public init?(
+        serverAddress: SocketAddress,
+        delegate: JSONRPCSessionDelegate? = nil)
+    {
+        self.delegate = delegate
+        
+        let domain: SocketDomain
+        let protocolFamily: ProtocolFamily
+        switch serverAddress.family
+        {
+            case .inet4: (domain, protocolFamily) = (.inet4, .tcp)
+            case .inet6: (domain, protocolFamily) = (.inet6, .tcp)
+            case .unix : (domain, protocolFamily) = (.local, .ip)
+        }
+        
+        switch NIX.socket(domain, .stream, protocolFamily)
+        {
+            case .success(let s): self.socket = s
+            case .failure(let error):
+                Self.log(.error, "Unable to create session socket: \(error)")
+                return nil
+        }
+        
+        self.address = serverAddress
+        
+        if let error = NIX.connect(socket, serverAddress)
+        {
+            _ = close(socket)
+            Self.log(.error, "Unable to connect to \(serverAddress): \(error)")
+            return nil
+        }
+        self.state = .initialized
+        
+        self.start()
     }
     
     // -------------------------------------
@@ -87,7 +126,7 @@ public class JSONRPCSession: JSONRPCLogger
         
         delegate?.sessionWillTerminate()
 
-        if let error = NIX.close(peerSocket)
+        if let error = NIX.close(socket)
         {
             log(
                 .warn,
@@ -95,9 +134,9 @@ public class JSONRPCSession: JSONRPCLogger
             )
         }
         
-        self.log(.info, "Ended session with \(peerAddress).")
+        self.log(.info, "Ended session with \(address).")
         
-        server.sessionEnded(for: self)
+        server?.sessionEnded(for: self)
 
         delegate?.sessionDidTerminate()
     }
@@ -115,7 +154,7 @@ public class JSONRPCSession: JSONRPCLogger
         delegate?.sessionWillStart()
         
         state = .started
-        self.log(.info, "Started session with \(peerAddress).")
+        self.log(.info, "Started session with \(address).")
         
         defer { cleanUp() }
         
@@ -125,7 +164,7 @@ public class JSONRPCSession: JSONRPCLogger
         
         while state != .quitting
         {
-            guard let line = lineReader.readLine(from: peerSocket) else {
+            guard let line = lineReader.readLine(from: socket) else {
                 break
             }
             
@@ -137,7 +176,7 @@ public class JSONRPCSession: JSONRPCLogger
     internal final func write(_ data: Data) throws
     {
         let bytesWritten: Int
-        switch writeMutex.withLock({ NIX.write(peerSocket, data) })
+        switch writeMutex.withLock({ NIX.write(socket, data) })
         {
             case .success(let b): bytesWritten = b
             case .failure(let error):
@@ -389,6 +428,6 @@ extension JSONRPCSession: Hashable
     
     // -------------------------------------
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(peerSocket.descriptor)
+        hasher.combine(socket.descriptor)
     }
 }
