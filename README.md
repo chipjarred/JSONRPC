@@ -64,19 +64,19 @@ func simpleClientExample()
 
 ### Handling incoming requests and notifications
 
-Of course, the simple example above doesn't make use of the fact that with JSON-RPC the server can send requests and notifications to the client too.  By default,  `JSONRPCSession` instances ignore incoming notifications, and responds to requests by a "method not found" errors.
+Of course, the simple example above doesn't make use of the fact that with JSON-RPC the server can send requests and notifications to the client too.  By default,  `JSONRPCSession` instances ignore incoming notifications, and respond to requests with a "method not found" error.
 
 In order to respond to server requests and notifications, we create a delegate for our session.  The delegate must conform to the `JSONRPCSessionDelegate` protocol, which provides for a number of methods that can be called for various events by the `JSONRPCSession` to which it is attached.  All of these have default implementations, so you only need to implement the ones you need.
 
 The most important of  the delegate methods to implement are
-- `respond(to: Request) -> Response?`
-    This method is called whenever the delegate's `JSONRPCSession` receives a request.  Your implementation should inspect the request for it's `method` and `parameters` properties and handle them in whatever way is appropriate for your application.  However; JSON-RPC requires that all requets be responded to.  
+- `respond(to: Request) -> Response?`:
+    This method is called whenever the delegate's `JSONRPCSession` receives a request.  Your implementation should inspect the request for its `method` and `parameters` properties, and handle them in whatever way is appropriate for your application; however, JSON-RPC requires that all requests be responded to.  
         - For any request you  handle, construct a response by calling one the delegate's `response(for:result:) -> Response` or `response(for: error:) -> Response` methods and return it.   
         - For requests you don't handle, simply return `nil`.  This tells `JSONRPCSession`  to respond with a "method not found" error. 
-- `handle(_ notification: Notification)`
-    This method is called whenever the delegate's `JSONRPCSession` receives a notification.  You handle it much the same way as for requests; however, you do return a `Response`.  Unhandled notifications are simply ignored.
+- `handle(_ notification: Notification)`:
+    This method is called whenever the delegate's `JSONRPCSession` receives a notification.  You handle it much the same way as for requests; however, you do *not* return a `Response`.  Unhandled notifications are simply ignored.
 
-We now modify the previous example to handle incoming requests and notifications:
+We now modify the previous example to handle incoming requests:
 
 ```swift
 import NIX
