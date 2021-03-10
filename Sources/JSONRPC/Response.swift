@@ -28,7 +28,7 @@ public struct Response: Codable
     @inlinable public var version: Version { Version(rawValue: jsonrpc)! }
 
     public let jsonrpc: String? // For version 2 JSON-RPC
-    public let id: Int
+    public let id: Int?
     public let result: Result?
     public let error: Error?
     
@@ -79,7 +79,18 @@ public struct Response: Codable
             error: error
         )
     }
-    
+
+    // -------------------------------------
+    internal init(version: Version = .default, error: Error)
+    {
+        self.init(
+            version: version,
+            id: nil,
+            result: nil,
+            error: error
+        )
+    }
+
     // -------------------------------------
     internal init(for request: GeneralRequest, result: [Any?])
     {
@@ -132,7 +143,7 @@ public struct Response: Codable
     @usableFromInline
     internal init(
         version: Version,
-        id: Int,
+        id: Int?,
         result: Result?,
         error: Error?)
     {

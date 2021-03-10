@@ -72,7 +72,7 @@ public enum ErrorCode: Int, Swift.Error, Codable, CustomStringConvertible
 }
 
 // -------------------------------------
-public struct Error: Codable
+public struct Error: Codable, Swift.Error
 {
     public let code: Int
     public let message: String
@@ -96,7 +96,8 @@ public struct Error: Codable
     
     /// Internal JSON-RPC error.
     static let internalError = Self(code: .internalError)
-
+    
+    @inlinable public var localizedDescription: String { message }
     
     // -------------------------------------
     @inlinable
