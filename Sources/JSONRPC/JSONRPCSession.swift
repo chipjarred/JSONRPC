@@ -29,7 +29,7 @@ public class JSONRPCSession: JSONRPCLogger
     typealias RequestID = Int
     public typealias RequestCompletion = (Response) -> Void
     
-    public unowned var server: JSONRPCServer?
+    public weak var server: JSONRPCServer?
     private let versionToUse: Version = .v2
     
     private let address: SocketAddress
@@ -75,6 +75,7 @@ public class JSONRPCSession: JSONRPCLogger
         self.socket = peerSocket
         self.address = peerAddress
         self.state = .initialized
+        self.delegate = delegate
     }
     
     // -------------------------------------
@@ -111,7 +112,13 @@ public class JSONRPCSession: JSONRPCLogger
         }
         self.state = .initialized
         
-        self.start()
+        let sem = DispatchSemaphore(value: 0)
+        _ = async
+        {
+            sem.signal()
+            self.start()
+        }
+        sem.wait(); sem.signal()
     }
     
     // -------------------------------------
@@ -136,14 +143,14 @@ public class JSONRPCSession: JSONRPCLogger
         
         self.log(.info, "Ended session with \(address).")
         
-        server?.sessionEnded(for: self)
-
         delegate?.sessionDidTerminate()
+        server = nil
     }
     
     // -------------------------------------
     public func terminate()
     {
+        guard state != .terminated else { return }
         self.log(.info, "Session termination requested.")
         cleanUp()
     }
@@ -170,11 +177,15 @@ public class JSONRPCSession: JSONRPCLogger
             
             dispatch(jsonData: line)
         }
+        
+        server?.sessionEnded(for: self)
     }
     
     // -------------------------------------
     internal final func write(_ data: Data) throws
     {
+        var data = data
+        data.append(SocketLineReader.newLine)
         let bytesWritten: Int
         switch writeMutex.withLock({ NIX.write(socket, data) })
         {

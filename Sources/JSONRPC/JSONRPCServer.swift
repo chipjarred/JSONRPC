@@ -21,6 +21,7 @@
 import Foundation
 import NIX
 import HostOS
+import Async
 
 // -------------------------------------
 public class JSONRPCServer: JSONRPCLogger
@@ -28,16 +29,11 @@ public class JSONRPCServer: JSONRPCLogger
     private let socket: SocketIODescriptor
     private let address: SocketAddress
     
-    private var sessionsMutex = NIX.SpinLock()
+    private var sessionsMutex = Mutex()
     private var currentSessions = Set<JSONRPCSession>()
     
-    private var quittingMutex = NIX.SpinLock()
-    private var _quitting = false
-    private var quitting: Bool
-    {
-        get { quittingMutex.withLock { _quitting } }
-        set { quittingMutex.withLock { _quitting = newValue } }
-    }
+    private var closedMutex = NIX.SpinLock()
+    private var closed = false
     
     private static let dispatchQueue =
         DispatchQueue(label: "JSONRPCServer-\(UUID())", attributes: .concurrent)
@@ -73,6 +69,16 @@ public class JSONRPCServer: JSONRPCLogger
                 return nil
         }
         
+        if let error = NIX.setsockopt(socket, .reuseAddress(true))
+        {
+            _ = NIX.close(socket)
+            Self.log(
+                .error,
+                "Unable to set socket reuse address option: \(error)"
+            )
+            return nil
+        }
+
         if let error = NIX.bind(self.socket, address)
         {
             Self.log(.error, "Unable to bind server listener socket: \(error)")
@@ -94,9 +100,27 @@ public class JSONRPCServer: JSONRPCLogger
     // -------------------------------------
     private func cleanUp(terminateSessions: Bool = true)
     {
+        if terminateSessions
+        {
+            log(.info, "Server terminating all connections.")
+            sessionsMutex.withLock {
+                currentSessions.forEach { $0.terminate() }
+            }
+        }
         
-        _ = NIX.close(socket)
-        log(.info, "Server stopped accepting new connections.")
+        let alreadyClosed: Bool = closedMutex.withLock
+        {
+            guard !closed else { return true }
+            
+            if let error = NIX.close(socket) {
+                Self.log(.warn, "Failed to close server socket: \(error)")
+            }
+            Self.log(.info, "Server socket closed")
+            closed = true
+            return false
+        }
+        
+        if alreadyClosed { return }
 
         if let unixPath = address.asUnix?.path.rawValue
         {
@@ -109,17 +133,19 @@ public class JSONRPCServer: JSONRPCLogger
                 )
             }
         }
-        
-        if terminateSessions
-        {
-            log(.info, "Server terminating all connections.")
-            sessionsMutex.withLock { currentSessions.removeAll() }
-        }
     }
     
     // -------------------------------------
-    public final func start() {
-        Self.dispatchQueue.async { self.acceptLoop() }
+    public final func start()
+    {
+        let sem = DispatchSemaphore(value: 0)
+        Self.dispatchQueue.async
+        {
+            sem.signal()
+            self.acceptLoop()
+        }
+        
+        sem.wait(); sem.signal()
     }
     
     // -------------------------------------
@@ -127,7 +153,9 @@ public class JSONRPCServer: JSONRPCLogger
     {
         log(.info, "Server started. Listening to \(address)")
         
-        while !quitting
+        defer { log(.info, "Server stopped accepting new connections.") }
+        
+        while true
         {
             var peerAddress = SocketAddress()
             switch NIX.accept(socket, &peerAddress)
@@ -144,8 +172,12 @@ public class JSONRPCServer: JSONRPCLogger
                     
                 case .failure(let error):
                     log(.error, "Unable to accept connection: \(error)")
+                    return
             }
         }
+        
+        
+
     }
     
     // -------------------------------------
@@ -160,7 +192,6 @@ public class JSONRPCServer: JSONRPCLogger
     {
         log(.info, "Server termination requested.")
         
-        quitting = true
         switch when
         {
             case .immediately:

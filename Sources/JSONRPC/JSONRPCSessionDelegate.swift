@@ -28,7 +28,7 @@ public protocol JSONRPCSessionDelegate: JSONRPCLogger
     func sessionWillTerminate()
     func sessionDidTerminate()
     
-    func respond(to: Request) -> Response?
+    func respond(to request: Request) -> Response?
     func handle(_ response: Response)
     func handle(_ notification: Notification)
     
