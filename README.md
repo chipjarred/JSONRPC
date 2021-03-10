@@ -64,7 +64,7 @@ func simpleClientExample()
 
 ### Handling incoming requests and notifications
 
-Of course, the simple example above doesn't make use of the fact that with JSON-RPC, the server can send requests and notifications to the client too.  By default, client-side `JSONRPCSession`s ignores incoming notifications, and responds to requests by a "method not found" errors.
+Of course, the simple example above doesn't make use of the fact that with JSON-RPC the server can send requests and notifications to the client too.  By default,  `JSONRPCSession` instances ignore incoming notifications, and responds to requests by a "method not found" errors.
 
 In order to respond to server requests and notifications, we create a delegate for our session.  The delegate must conform to the `JSONRPCSessionDelegate` protocol, which provides for a number of methods that can be called for various events by the `JSONRPCSession` to which it is attached.  All of these have default implementations, so you only need to implement the ones you need.
 
