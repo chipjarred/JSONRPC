@@ -100,3 +100,16 @@ func unreachable(
         line: line
     )
 }
+
+// -------------------------------------
+func unimplemented(
+    function: StaticString = #function,
+    file: StaticString = #file,
+    line: UInt = #line) -> Never
+{
+    fatalError(
+        "\(function): Implemente me!",
+        file: file,
+        line: line
+    )
+}

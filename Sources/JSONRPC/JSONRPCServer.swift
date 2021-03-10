@@ -28,8 +28,8 @@ public class JSONRPCServer: JSONRPCLogger
     private let socket: SocketIODescriptor
     private let address: SocketAddress
     
-    private var peersMutex = NIX.SpinLock()
-    private var peers: [SocketIODescriptor] = []
+    private var sessionsMutex = NIX.SpinLock()
+    private var currentSessions = Set<JSONRPCSession>()
     
     private var quittingMutex = NIX.SpinLock()
     private var _quitting = false
@@ -85,7 +85,7 @@ public class JSONRPCServer: JSONRPCLogger
     deinit { cleanUp() }
     
     // -------------------------------------
-    private func cleanUp(closePeerSockets: Bool = true)
+    private func cleanUp(terminateSessions: Bool = true)
     {
         _ = NIX.close(socket)
         if let unixPath = address.asUnix?.path.rawValue
@@ -100,12 +100,10 @@ public class JSONRPCServer: JSONRPCLogger
             }
         }
         
-        if closePeerSockets
+        if terminateSessions
         {
-            peersMutex.withLock
-            {
-                for peer in peers { _ = NIX.close(peer) }
-                peers.removeAll()
+            sessionsMutex.withLock {
+                currentSessions.removeAll()
             }
         }
     }
@@ -125,15 +123,13 @@ public class JSONRPCServer: JSONRPCLogger
                     case .success(let peerSocket):
                         Self.dispatchQueue.async
                         {
-                            do { try clientLoop(peerSocket, peerAddress) }
-                            catch
-                            {
-                                log(
-                                    .warn,
-                                    "client loop threw exception: "
-                                    + "\(error.localizedDescription)"
-                                )
-                            }
+                            let clientSession = JSONRPCSession(
+                                from: self,
+                                forPeerSocket: peerSocket,
+                                at: peerAddress
+                            )
+                            addSession(clientSession)
+                            clientSession.start()
                         }
                         
                     case .failure(let error):
@@ -144,14 +140,14 @@ public class JSONRPCServer: JSONRPCLogger
     }
     
     // -------------------------------------
-    public enum TerminationSchedule
+    public enum SessionTerminationTime
     {
         case immediately
         case afterCurrentSessionsFinish
     }
     
     // -------------------------------------
-    public final func terminate(_ when: TerminationSchedule)
+    public final func terminate(_ when: SessionTerminationTime)
     {
         quitting = true
         switch when
@@ -160,10 +156,10 @@ public class JSONRPCServer: JSONRPCLogger
                 cleanUp()
                 
             case .afterCurrentSessionsFinish:
-                cleanUp(closePeerSockets: false)
+                cleanUp(terminateSessions: false)
                 let sleepSemaphore = DispatchSemaphore(value: 0)
                 defer { sleepSemaphore.signal() }
-                while peersMutex.withLock( { peers.count > 0 } )
+                while sessionCount > 0
                 {
                     _ = sleepSemaphore.wait(
                         timeout: .now() + .milliseconds(100)
@@ -173,131 +169,22 @@ public class JSONRPCServer: JSONRPCLogger
     }
     
     // -------------------------------------
-    internal final func clientLoop(
-        _ peerSocket: SocketIODescriptor,
-        _ peerAddress: SocketAddress) throws
-    {
-        peers.append(peerSocket)
-        self.log(.info, "Started session with \(peerAddress).")
-        
-        defer
-        {
-            removePeer(peerSocket)
-            
-            if let error = NIX.close(peerSocket)
-            {
-                log(
-                    .warn,
-                    "\(Self.self): Failed to close peer socket: \(error)"
-                )
-            }
-            
-            self.log(.info, "Ended session with \(peerAddress).")
-        }
-        
-        let encoder = JSONEncoder()
-        let decoder = JSONDecoder()
-        
-        var lineReader = SocketLineReader(logger: self)
-        
-        while true
-        {
-            guard let line = lineReader.readLine(from: peerSocket)
-            else { break }
-            
-            log(.info, "\(Self.self): Received request: \"\(line)\"")
-            
-            guard let response = try self.response(for: line, encoder, decoder)
-            else { continue }
-            
-            let bytesWritten: Int
-            switch NIX.write(peerSocket, response)
-            {
-                case .success(let b): bytesWritten = b
-                case .failure(let error):
-                    log(
-                        .error,
-                        "\(Self.self): Unable to write response to peer socket:"
-                        + " \(error)"
-                    )
-                    return
-            }
-            
-            if bytesWritten != response.count
-            {
-                log(
-                    .error,
-                    "\(Self.self): Failed to write all bytes of response to "
-                    + "peer socket: \(bytesWritten) of \(response.count) bytes "
-                    + "written"
-                )
-                return
-            }
-            
-            log(.info, "\(Self.self): Sent response: \"\(response)\"")
-        }
+    internal func sessionEnded(for peerSession: JSONRPCSession) {
+        removeSession(peerSession)
     }
     
     // -------------------------------------
-    private func response(
-        for data: Data,
-        _ encoder: JSONEncoder,
-        _ decoder: JSONDecoder) throws -> Data?
-    {
-        if let request = try? decoder.decode(GeneralRequest.self, from: data)
-        {
-            if request.id == nil
-            {
-                processNotification(Notification(from: request))
-                return nil
-            }
-            else
-            {
-                let response = processRequest(Request(from: request))
-                guard let responseData = try? encoder.encode(response) else
-                {
-                    log(
-                        .warn,
-                        "Unable to encode response for request: \(response)"
-                    )
-                    return nil
-                }
-                return responseData
-            }
-        }
-        else if let response = try? decoder.decode(Response.self, from: data)
-        {
-            log(.warn, "Got response from client: \(response)")
-            return nil
-        }
-        else
-        {
-            // TODO: Search data for an id, so that a parse error can be sent.
-            throw ErrorCode.parseError
-        }
+    private func addSession(_ session: JSONRPCSession) {
+        _ = sessionsMutex.withLock { currentSessions.insert(session) }
     }
     
     // -------------------------------------
-    private func processNotification(_ notificiation: Notification)
-    {
+    private func removeSession(_ session: JSONRPCSession) {
+        _ = sessionsMutex.withLock { currentSessions.remove(session) }
     }
     
     // -------------------------------------
-    private func processRequest(_ request: Request) -> Response
-    {
-        return Response(for: request, error: .internalError)
-    }
-
-    // -------------------------------------
-    private func removePeer(_ peerSocket: SocketIODescriptor)
-    {
-        peersMutex.withLock
-        {
-            if let i = peers.firstIndex(
-                where: { $0.descriptor == peerSocket.descriptor })
-            {
-                peers.remove(at: i)
-            }
-        }
+    private var sessionCount: Int {
+        sessionsMutex.withLock { currentSessions.count }
     }
 }
