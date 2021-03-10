@@ -24,7 +24,19 @@ import NIX
 // -------------------------------------
 internal struct SocketLineReader
 {
-    var buffer = Data(capacity: 4096)
+    static let newLine: UInt8 = 0x0a
+    var buffer: Data
+    var logger: JSONRPCLogger
+    
+    // -------------------------------------
+    @inlinable
+    public init(
+        buffer: Data = Data(capacity: 4096),
+        logger: JSONRPCLogger = NullLogger())
+    {
+        self.buffer = buffer
+        self.logger = logger
+    }
     
     // -------------------------------------
     /*
@@ -35,8 +47,7 @@ internal struct SocketLineReader
         - socket: the socket to read from
      
      - Returns:
-        - On successfully reading a line, it is returned as a `Data` instance,
-            and `buffer` will contain any bytes read after the newline.
+        - On successfully reading a line, it is returned as a `Data` instance.
         - If an error occurred, the error will already have been logged, and
             `nil` is returned..
      */
@@ -54,7 +65,7 @@ internal struct SocketLineReader
             {
                 case .success(let readCount): bytesRead = readCount
                 case .failure(let error):
-                    log(
+                    logger.log(
                         .error,
                         "\(Self.self): Unable to read from peer socket: "
                         + "\(error)"
@@ -64,9 +75,9 @@ internal struct SocketLineReader
             
             if bytesRead == 0
             {
-                log(
+                logger.log(
                     .info,
-                    "\(Self.self): Peer closed connection"
+                    "\(Self.self): Remote socket closed connection"
                 )
                 return nil
             }
@@ -92,13 +103,11 @@ internal struct SocketLineReader
      */
     private func readLine(from data: inout Data) -> Data?
     {
-        let newLine: UInt8 = 0x0a
-        
         guard data.count > 0 else { return nil }
         
         // If there is a newline in data, return the portion up to the newline
         // and remove it and the newline from data.
-        if let lineEnd = data.firstIndex(of: newLine)
+        if let lineEnd = data.firstIndex(of: Self.newLine)
         {
             defer { data.removeSubrange(...lineEnd) }
             return data[..<lineEnd]

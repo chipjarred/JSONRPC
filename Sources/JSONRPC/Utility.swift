@@ -29,7 +29,7 @@ internal let runningUnitTests: Bool =
 
 
 // -------------------------------------
-enum LogLevel: String
+public enum LogLevel: String
 {
     case info = "info"
     case warn = "warning"
@@ -39,7 +39,7 @@ enum LogLevel: String
 }
 
 // -------------------------------------
-func log(
+internal func log(
     _ level: LogLevel = .info,
     _ items: Any...,
     separator: String = " ",
