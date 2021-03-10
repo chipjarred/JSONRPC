@@ -46,16 +46,17 @@ public class JSONRPCServer: JSONRPCLogger
     public init?(boundTo address: SocketAddress, maximumConnections: Int)
     {
         let domain: NIX.SocketDomain
+        let protocolFamily: NIX.ProtocolFamily
         switch address.family
         {
-            case .inet4: domain = .inet4
-            case .inet6: domain = .inet6
-            case .unix: domain = .local
+            case .inet4: (domain, protocolFamily) = (.inet4, .tcp)
+            case .inet6: (domain, protocolFamily) = (.inet6, .tcp)
+            case .unix : (domain, protocolFamily) = (.local, .ip)
         }
         
         self.address = address
 
-        switch NIX.socket(domain, .stream, .tcp)
+        switch NIX.socket(domain, .stream, protocolFamily)
         {
             case .success(let s): self.socket = s
             case .failure(let error):
@@ -87,7 +88,10 @@ public class JSONRPCServer: JSONRPCLogger
     // -------------------------------------
     private func cleanUp(terminateSessions: Bool = true)
     {
+        
         _ = NIX.close(socket)
+        log(.info, "Server stopped accepting new connections.")
+
         if let unixPath = address.asUnix?.path.rawValue
         {
             if let error = NIX.unlink(unixPath), error.errno != HostOS.ENOENT
@@ -102,39 +106,37 @@ public class JSONRPCServer: JSONRPCLogger
         
         if terminateSessions
         {
-            sessionsMutex.withLock {
-                currentSessions.removeAll()
-            }
+            log(.info, "Server terminating all connections.")
+            sessionsMutex.withLock { currentSessions.removeAll() }
         }
     }
     
     // -------------------------------------
-    public final func start()
+    public final func start() {
+        Self.dispatchQueue.async { self.acceptLoop() }
+    }
+    
+    // -------------------------------------
+    private func acceptLoop()
     {
         log(.info, "Server started. Listening to \(address)")
         
-        Self.dispatchQueue.async
-        { [self] in
-            while !quitting
+        while !quitting
+        {
+            var peerAddress = SocketAddress()
+            switch NIX.accept(socket, &peerAddress)
             {
-                var peerAddress = SocketAddress()
-                switch NIX.accept(socket, &peerAddress)
-                {
-                    case .success(let peerSocket):
-                        Self.dispatchQueue.async
-                        {
-                            let clientSession = JSONRPCSession(
-                                from: self,
-                                forPeerSocket: peerSocket,
-                                at: peerAddress
-                            )
-                            addSession(clientSession)
-                            clientSession.start()
-                        }
-                        
-                    case .failure(let error):
-                        log(.error, "Unable to accept connection: \(error)")
-                }
+                case .success(let peerSocket):
+                    let clientSession = JSONRPCSession(
+                        from: self,
+                        forPeerSocket: peerSocket,
+                        at: peerAddress
+                    )
+                    addSession(clientSession)
+                    Self.dispatchQueue.async { clientSession.start() }
+                    
+                case .failure(let error):
+                    log(.error, "Unable to accept connection: \(error)")
             }
         }
     }
@@ -149,14 +151,19 @@ public class JSONRPCServer: JSONRPCLogger
     // -------------------------------------
     public final func terminate(_ when: SessionTerminationTime)
     {
+        log(.info, "Server termination requested.")
+        
         quitting = true
         switch when
         {
             case .immediately:
+                log(.info, "Server shutting down immediately.")
                 cleanUp()
                 
             case .afterCurrentSessionsFinish:
                 cleanUp(terminateSessions: false)
+                
+                log(.info, "Waiting for current sessions to finish.")
                 let sleepSemaphore = DispatchSemaphore(value: 0)
                 defer { sleepSemaphore.signal() }
                 while sessionCount > 0
