@@ -15,9 +15,6 @@ class Client_Server_UnitTests: XCTestCase
     // -------------------------------------
     func test_client_can_connect_to_inet4_server()
     {
-        /*
-         Note: On BSD systems, including Darwin, bound TCP closed sockets are not actually deallocated when the process that created them terminates.  
-         */
         let serverAddress = SocketAddress(
             ip4Address: .loopback,
             port: 2000 + #line

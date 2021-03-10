@@ -11,12 +11,15 @@ let package = Package(
         .library(
             name: "JSONRPC",
             targets: ["JSONRPC"]),
+        .library(
+            name: "JSONRPC-Examples",
+            targets: ["JSONRPC-Examples"]),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
         // .package(url: /* package url */, from: "1.0.0"),
         .package(url: "https://github.com/chipjarred/NIX.git", from: "0.0.10"),
-        .package(url: "https://github.com/chipjarred/Async.git", from: "1.0.3")
+        .package(url: "https://github.com/chipjarred/Async.git", from: "1.0.3"),
     ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
@@ -24,6 +27,9 @@ let package = Package(
         .target(
             name: "JSONRPC",
             dependencies: ["Async", "NIX"]),
+        .target(
+            name: "JSONRPC-Examples",
+            dependencies: ["JSONRPC", "NIX"]),
         .testTarget(
             name: "JSONRPCTests",
             dependencies: ["JSONRPC"]),
