@@ -227,15 +227,100 @@ public class JSONRPCSession: JSONRPCLogger
         else if let response = try? decoder.decode(Response.self, from: data) {
             handleResponse(response)
         }
+        else if let batch =
+            try? decoder.decode([GeneralRequest].self, from: data)
+        {
+            if batch.count > 0 { handleBatchedRequests(batch) }
+            else {  _ = async { self.send(Response(error: .invalidRequest)) } }
+        }
+        else if let batch = try? decoder.decode([Response].self, from: data) {
+            handleBatchedResponses(batch)
+        }
+        else if let _ = try? decoder.decode(AnyJSONData.self, from: data) {
+            _ = async { self.send(Response(error: .invalidRequest)) }
+        }
+        else { _ = async { self.send(Response(error: .parseError)) } }
+        
     }
     
     // -------------------------------------
-    public final func handleNotification(_ notification: Notification) {
+    private func handleBatchedRequests(_ batch: [GeneralRequest])
+    {
+        _ = async
+        {
+            /*
+             Handle all of the requests and notifications in the batch
+             asynchronously, collecting the futures for their responses
+             */
+            var futures = [Future<Response>]()
+            futures.reserveCapacity(batch.count)
+            
+            for request in batch
+            {
+                if request.id == nil {
+                    self.handleNotification(Notification(from: request))
+                }
+                else
+                {
+                    futures.append(
+                        async { self.dispatch(request: Request(from: request)) }
+                    )
+                }
+            }
+            
+            // Wait for each response, and put it into a response batch.
+            var responses = [Response]()
+            responses.reserveCapacity(futures.count)
+            
+            for future in futures {
+                if let response = future.value { responses.append(response) }
+            }
+            
+            // JSON-RPC V2.0 spec says not to return an empty response array
+            guard responses.count > 0 else { return }
+            
+            // Encode and send the batched responses
+            if let jsonData = try? JSONEncoder().encode(responses)
+            {
+                do { try self.write(jsonData) }
+                catch
+                {
+                    self.log(
+                        .error,
+                        "Unable to send batch response: "
+                        + "\(error.localizedDescription)"
+                    )
+                }
+                
+                self.send(.init(error: .internalError))
+            }
+            else
+            {
+                self.log(.error, "Unable to encode batch response")
+                self.send(.init(error: .internalError))
+            }
+        }
+    }
+    
+    // -------------------------------------
+    private func handleBatchedResponses(_ batch: [Response])
+    {
+        /*
+         There's nothing special about batched resposnes. Just dispatch each
+         one to its completion handler.
+         */
+        _ = async {
+            for response in batch { self.handleResponse(response) }
+        }
+    }
+
+    // -------------------------------------
+    private func handleNotification(_ notification: Notification) {
         _ = async { self.delegate?.handle(notification, for: self) }
     }
     
     // -------------------------------------
-    public final func handleRequest(_ request: Request)
+    private func handleRequest(_ request: Request)
     {
         _ = async
         {
@@ -246,7 +331,14 @@ public class JSONRPCSession: JSONRPCLogger
     }
     
     // -------------------------------------
-    public final func handleResponse(_ response: Response)
+    private func dispatch(request: Request) -> Response
+    {
+        return delegate?.respond(to: request, for: self)
+            ?? Response(for: request, error: .methodNotFound)
+    }
+    
+    // -------------------------------------
+    private func handleResponse(_ response: Response)
     {
         let result: Result<AnyJSONData, Error>
         if let error = response.error {
