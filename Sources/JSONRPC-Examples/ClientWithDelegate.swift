@@ -53,29 +53,27 @@ func clientWithDelegateExample()
     session.request(
         method: "ask",
         parameters: ["Ford, what's the fish doing in my ear?"])
-    { response in
-        if let error = response.error {
-            print("Response is an error: \(error.code): \(error.message)")
-        }
-        else if let result = response.result
+    {
+        switch $0
         {
-            switch result
-            {
-                case .string(let answer):
-                    print("Response is \"\(answer)\"")
-                case .integer(let answer):
-                    if answer == 42
-                    {
+            case .success(let result):
+                switch result
+                {
+                    case .string(let answer):
                         print("Response is \"\(answer)\"")
-                        break
-                    }
-                    fallthrough
-                default:
-                    print("DON'T PANIC! Unexpected type of response: \(result)")
-            }
-        }
-        else {
-            fatalError("Response must always have either result or error")
+                    case .integer(let answer):
+                        if answer == 42
+                        {
+                            print("Response is \"\(answer)\"")
+                            break
+                        }
+                        fallthrough
+                    default:
+                        print("DON'T PANIC! Unexpected type of response: \(result)")
+                }
+                
+            case .failure(let error):
+                print("Response is an error: \(error.code): \(error.message)")
         }
     }
     

@@ -56,11 +56,18 @@ class Client_Server_UnitTests: XCTestCase
         let sem = DispatchSemaphore(value: 0)
         
         client.request(method: "foo")
-        { (response) in
-            switch response.result
+        {
+            switch $0
             {
-                case .string(let s): XCTAssertEqual(s, "bar")
-                default: XCTFail("Result is wrong type: \(response)")
+                case.success(let result):
+                    switch result
+                    {
+                        case .string(let s): XCTAssertEqual(s, "bar")
+                        default: XCTFail("Result is wrong type: \(result)")
+                    }
+                case .failure(let error):
+                    XCTFail("Got Error response: \(error)")
+
             }
             sem.signal()
         }

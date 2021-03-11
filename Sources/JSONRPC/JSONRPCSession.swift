@@ -27,7 +27,7 @@ import NIX
 public class JSONRPCSession: JSONRPCLogger
 {
     typealias RequestID = Int
-    public typealias RequestCompletion = (Response) -> Void
+    public typealias RequestCompletion = (Result<AnyJSONData,Error>) -> Void
     
     public weak var server: JSONRPCServer?
     private let versionToUse: Version = .v2
@@ -248,6 +248,15 @@ public class JSONRPCSession: JSONRPCLogger
     // -------------------------------------
     public final func handleResponse(_ response: Response)
     {
+        let result: Result<AnyJSONData, Error>
+        if let error = response.error {
+            result = .failure(error)
+        }
+        else if let value = response.result {
+            result = .success(value)
+        }
+        else { unreachable() }
+        
         /*
          If the response has an id, then it belongs to a specific request,
          so we send it to that request's completion handler, and remove that
@@ -261,14 +270,14 @@ public class JSONRPCSession: JSONRPCLogger
             let handler = completionHandlersMutex.withLock {
                 completionHandlers.removeValue(forKey: responseID)
             }
-            _ = async { handler?(response) }
+            _ = async { handler?(result) }
         }
         else
         {
             completionHandlersMutex.withLock
             {
                 for handler in completionHandlers.values {
-                    _ = async { handler(response) }
+                    _ = async { handler(result) }
                 }
             }
         }

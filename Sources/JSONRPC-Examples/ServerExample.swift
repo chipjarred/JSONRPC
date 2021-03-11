@@ -53,24 +53,23 @@ class ExampleServerDelegate: JSONRPCSessionDelegate
             
             session.request(method: "make_tea")
             { response in
-                if response.error != nil {
-                    print("OK, Panic! Arthur could not make tea.")
-                }
-                else if let result = response.result
+                switch response
                 {
-                    switch result
-                    {
-                        case .array(let result):
-                            if let cupContents = result.first as? String {
-                                print("Nutri-matic made us \(cupContents)")
-                            }
-                            else { fallthrough }
-                            
-                        default:
-                            print("Nutri-matic has gone haywire again.")
-                    }
+                    case .success(let result):
+                        switch result
+                        {
+                            case .array(let result):
+                                if let cupContents = result.first as? String {
+                                    print("Nutri-matic made us \(cupContents)")
+                                }
+                                else { fallthrough }
+                                
+                            default:
+                                print("Nutri-matic has gone haywire again.")
+                        }
+                    case .failure(_):
+                        print("OK, Panic! Arthur could not make tea.")
                 }
-                else { fatalError("Should never get here") }
             }
         }
     }
