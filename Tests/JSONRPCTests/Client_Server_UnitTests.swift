@@ -10,6 +10,8 @@ class Client_Server_UnitTests: XCTestCase
     static var allTests =
     [
         ("test_client_can_connect_to_inet4_server", test_client_can_connect_to_inet4_server),
+        ("test_client_can_connect_to_inet6_server", test_client_can_connect_to_inet6_server),
+        ("test_client_can_connect_to_Unix_domain_server", test_client_can_connect_to_Unix_domain_server),
     ]
     
     // -------------------------------------
