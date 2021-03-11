@@ -159,26 +159,6 @@ Let's modify our last client example to send a batch.  It will batch two request
 import NIX
 import JSONRPC
 
-class BatchExampleClientDelegate: JSONRPCSessionDelegate
-{
-    required public init() { }
-    
-    public func respond(
-        to request: Request,
-        for session: JSONRPCSession) -> Response?
-    {
-        if request.method == "make_tea"
-        {
-            return response(
-                for: request,
-                result:["something that is almost, but not entirely unlike tea"]
-            )
-        }
-        
-        return nil
-    }
-}
-
 func batchRequestExample()
 {
     // Assuming a server is already running on the local machine
