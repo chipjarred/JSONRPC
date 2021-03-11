@@ -99,7 +99,7 @@ internal struct GeneralRequest: Codable
     {
         let container = try decoder.container(keyedBy: CodingKey.self)
         self.jsonrpc = try? container.decode(String.self, forKey: "jsonrpc")
-        self.id = try container.decode(Int.self, forKey: "id")
+        self.id = try? container.decode(Int.self, forKey: "id")
         self.method = try container.decode(String.self, forKey: "method")
         self.params = try? container.decode(Parameters.self, forKey: "params")
         
@@ -119,7 +119,10 @@ internal struct GeneralRequest: Codable
         if let version = jsonrpc
         {   // Version 2
             try container.encode(version, forKey: "jsonrpc")
-            try container.encode(id, forKey: "id")
+            if let id = self.id {
+                try container.encode(id, forKey: "id")
+            }
+            else { try container.encodeNil(forKey: "id") }
             try container.encode(method, forKey: "method")
             
             // If no parameters, don't encode anything
@@ -130,7 +133,10 @@ internal struct GeneralRequest: Codable
         }
         else
         {   // Version 1
-            try container.encode(id, forKey: "id")
+            if let id = self.id {
+                try container.encode(id, forKey: "id")
+            }
+            else { try container.encodeNil(forKey: "id") }
             try container.encode(method, forKey: "method")
             
             if let params = self.params

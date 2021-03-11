@@ -48,11 +48,20 @@ internal func log(
     file: StaticString = #file,
     line: UInt = #line)
 {
-    var message = "\(level.rawValue): JSONRPC: "
-    message += String(describing: items.first)
+    func makeStr(_ s: Any) -> String
+    {
+        return (s as? CustomStringConvertible)?.description
+            ?? String(describing: s)
+    }
     
-    for item in items.dropFirst() {
-        message += separator + String(describing: item)
+    var message = "\(level.rawValue): JSONRPC: "
+    if let first = items.first
+    {
+        message += makeStr(first)
+        
+        for item in items.dropFirst() {
+            message += separator + makeStr(item)
+        }
     }
     
     message += terminator

@@ -21,6 +21,7 @@ class V2_Request_UnitTests: XCTestCase
         ("test_can_encode_request_with_empty_named_parameters", test_can_encode_request_with_empty_named_parameters),
         ("test_can_encode_request_with_one_named_parameter", test_can_encode_request_with_one_named_parameter),
         ("test_can_encode_request_with_two_named_parameters", test_can_encode_request_with_two_named_parameters),
+        ("test_can_decode_batch_requests", test_can_decode_batch_requests),
     ]
     
     // MARK:- Version 2 Decoding
@@ -480,5 +481,37 @@ class V2_Request_UnitTests: XCTestCase
         let json = String(data: jsonData, encoding: .utf8)
         XCTAssertNotNil(json)
         XCTAssertEqual(json!, expected)
+    }
+    
+    // MARK:- Batch Requests
+    // -------------------------------------
+    func test_can_decode_batch_requests()
+    {
+        let json = #"[{"jsonrpc":"2.0","id":1,"method":"foo"},"#
+            + #"{"jsonrpc":"2.0","id":2,"method":"food"},"#
+            + #"{"jsonrpc":"2.0","id":null,"method":"drink"}]"#
+        
+        let jsonData = json.data(using: .ascii)!
+        guard let array =
+                try? JSONDecoder().decode([GeneralRequest].self, from: jsonData)
+        else
+        {
+            XCTFail("Unable to decode JSON")
+            return
+        }
+        
+        XCTAssertEqual(array.count, 3)
+        
+        XCTAssertEqual(array[0].version, .v2)
+        XCTAssertEqual(array[1].version, .v2)
+        XCTAssertEqual(array[2].version, .v2)
+        
+        XCTAssertEqual(array[0].id, 1)
+        XCTAssertEqual(array[1].id, 2)
+        XCTAssertNil(array[2].id)
+        
+        XCTAssertEqual(array[0].method, "foo")
+        XCTAssertEqual(array[1].method, "food")
+        XCTAssertEqual(array[2].method, "drink")
     }
 }
