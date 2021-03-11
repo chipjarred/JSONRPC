@@ -1,17 +1,16 @@
 # JSONRPC
 
-`JSONRPC` is a small Swift package for easily implementing both TCP and Unix domain socket-based JSON-RPC clients and servers.  I'm implementing it for my own use, but putting in the public domain for others to use as well.  It is a work in progress, and at the moment it has some limitations (which I plan to eliminate)
+`JSONRPC` is a small Swift package for easily implementing both TCP and Unix domain socket-based JSON-RPC clients and servers.  I'm implementing it for my own use, but putting in the public domain for others to use as well.  It is a work in progress, and at the moment it has some limitations (which I plan to eliminate):
 
 - It only supports JSON-RCP Version 2.0.  There is code to support Version 1.0 in the various Request/Response types, but not yet available for use to actually use in sessions, and there is no code to handle Version 1.1 specifically.
-- It lacks support for batch requests at the moment.
 - For TCP connections you have to specify the address as an IPv4 or IPv6 address and port.  I've yet to implement DNS look-up to resolve host names.
 - It doesn't currently support any encryption layer.  Until it does, don't use it to send any confidential information.
 
-In addition there is an edge case I am not sure how to handle from reading the JSON-RPC Version 2.0  specification.  There is a possibility of a response containing a `null` `id`.  For example, if a server receives invalid JSON for a request, it is supposed to respond with a parse error, but by its nature, a parse error means it very likely can't extract the `id` from the JSON, so the response containing the error can't have the `id` of the problematic request.   On the side receiving bad JSON, that's exactly what I do, send a parse error response, with a `null` `id`.  On the original requester's side I broadcast responses with a `null` value for `id` to all handlers for requests still waiting on responses, but I don't remove them as having been serviced to allow pending handlers for valid requests to subsequently receive their correct responses.  I'm not sure that's the right approach, but neither is directing the response to the handler for the most recently sent request, nor just ignoring the response.  Giving up and abruptly closing the connection doesn't seem approprate either.  Theoretically this shouldn't happen.  This package uses `Foundation`'s `JSONEncoder` to encode the JSON, and `JSONDecoder` to decode it.   The TCP protocol should prevent errors from creeping into the data in transmission (barring overt tampering by some router or man-in-the-middle).  So the only legitimiate reason this could happen is the software on the other side of the connection has buggy JSON encoder/decoder code.  Still, I'd like to handle it in an appropriate way.   If anyone reading knows the correct way to handle this situation, please let me know. 
+In addition there is an edge case I am not sure how to handle from reading the JSON-RPC Version 2.0  specification.  There is a possibility of a response containing a `null` `id`.  For example, if a server receives invalid batch request,  it is supposed to reply with one "invalid request" error for the whole batch and that response has a `null`, `id`.   The same thing can happen even on a single request that is invalid JSON, which causes a parse error.  Making the response is the easy part.  The difficult part is what to do as the original requester receiving such a response.  This would not be a problem if the the protocol were supposed to be used synchronously.  The sender would just block until it got a respnose, and since no more requests had been sent, it would know that the error applied to the most recent request (or batch of requests).   But who wants their code to block?   Multiple requests, and even multiple batches may have been sent before the error arrives, and without an `id` there's no way of knowing which request(s) it applies to.  The way I currently handle this situation is to broadcast responses with a `null`  `id` to all handlers for requests that are still waiting on responses, but I don't remove them as having been serviced to allow pending handlers for valid requests to subsequently receive their correct responses.  I'm not sure that's the right approach, but neither is directing the response to the handler for the most recently sent request, nor just ignoring the response.  Giving up and abruptly closing the connection doesn't seem approprate either.  I'd like to handle it in an appropriate way.   If anyone reading knows the correct way to handle this situation, please let me know.
 
-## How to use it
+## How to Use `JSONRPC`
 
-### Sending requests and notifications
+### Sending Requests and Notifications
 
 For the simplest use, for which you only need to make requests to a server, and receive reponses to those requests, you simply create a `JSONRPCSession` object, which connects to the server. `JSONRPC` uses the [`NIX` package](https://github.com/chipjarred/NIX) to specify IP addresses.
 
@@ -63,7 +62,7 @@ func simpleClientExample()
 }
 ```
 
-### Handling incoming requests and notifications
+### Handling Incoming Requests and Notifications
 
 Of course, the simple example above doesn't make use of the fact that with the JSON-RPC protocol the server can send requests and notifications to the client too.  By default,  `JSONRPCSession` instances ignore incoming notifications, and respond to requests with a "method not found" error.
 
@@ -150,7 +149,109 @@ func clientWithDelegateExample()
     session.notify(method: "set", parameters: ["feelings": "confused"])
 }
 ```
-### Making a server
+### Batch Requests
+
+The JSON-RPC protocol allows sending batched requests.  To do this, the requester calls its session's `batch()` method to obtain a `Batch`.  It then makes calls to various request and notification methds on that `Batch` instead directly to the session.  The `Batch` accumulates them, but does not the send them.  When you're ready to send the batch, you call the session's `send(_:Batch)` method.  The server (or client, if the server sent the batch), responds with a batch of responses, but that is handled within `JSONRPCSession`.   Your code specifies completion handlers as normal when it calls methods on the request batch, and then the session dispatches the batched responses to your handlers. 
+
+Let's modify our last client example to send a batch.  It will batch two requests and one notification:
+
+```swift
+import NIX
+import JSONRPC
+
+class BatchExampleClientDelegate: JSONRPCSessionDelegate
+{
+    required public init() { }
+    
+    public func respond(
+        to request: Request,
+        for session: JSONRPCSession) -> Response?
+    {
+        if request.method == "make_tea"
+        {
+            return response(
+                for: request,
+                result:["something that is almost, but not entirely unlike tea"]
+            )
+        }
+        
+        return nil
+    }
+}
+
+func batchRequestExample()
+{
+    // Assuming a server is already running on the local machine
+    guard let session = JSONRPCSession(
+        serverAddress: .init(ip4Address: .loopback, port: 2020),
+        delegate: ExampleClientDelegate())
+    else { fatalError("Unable to create JSRONRPCSession") }
+    
+    // Create a batch of requests
+    var batch = session.batch()
+    batch.request(
+        method: "ask",
+        parameters: ["Ford, what's the fish doing in my ear?"])
+    {
+        switch $0
+        {
+            case .success(let result):
+                switch result
+                {
+                    case .string(let answer):
+                        print("Response is \"\(answer)\"")
+                    case .integer(let answer):
+                        if answer == 42
+                        {
+                            print("Response is \"\(answer)\"")
+                            break
+                        }
+                        fallthrough
+                    default:
+                        print("DON'T PANIC! Unexpected type of response: \(result)")
+                }
+                
+            case .failure(let error):
+                print("Response is an error: \(error.code): \(error.message)")
+        }
+    }
+    batch.request(
+        method: "ask",
+        parameters: ["Where are we?"])
+    {
+        switch $0
+        {
+            case .success(let result):
+                switch result
+                {
+                    case .string(let answer):
+                        if answer == "safe" {
+                            session.notify(
+                                method: "say",
+                                parameters: ["Oh, good."]
+                            )
+                        }
+                    case .integer(let answer):
+                        if answer == 42
+                        {
+                            print("Response is \"\(answer)\"")
+                            break
+                        }
+                        fallthrough
+                    default:
+                        print("DON'T PANIC! Unexpected type of response: \(result)")
+                }
+                
+            case .failure(let error):
+                print("Response is an error: \(error.code): \(error.message)")
+        }
+    }
+    batch.notify(method: "set", parameters: ["feelings": "confused"])
+    
+    session.send(batch)
+}
+```
+### Making a Server
 
 `JSONRPC` servers have three parts, two of which you've already met:
 - `JSONRPCSession`:  
