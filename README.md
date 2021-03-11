@@ -2,9 +2,12 @@
 
 `JSONRPC` is a small Swift package for easily implementing both TCP and Unix domain socket-based JSON-RPC clients and servers.  I'm implementing it for my own use, but putting in the public domain for others to use as well.  It is a work in progress, and at the moment it has some limitations (which I plan to eliminate)
 
-- It only supports JSON-RCP Version 2.0.  Some support for Version 1.0 is in place, but not yet available for use, and there is no code to handle Version 1.1.
+- It only supports JSON-RCP Version 2.0.  There is code to support Version 1.0 in the various Request/Response types, but not yet available for use to actually use in sessions, and there is no code to handle Version 1.1 specifically.
 - It lacks support for batch requests at the moment.
-- For TCP connections you have to specify the address as an IPv4 or IPv6 address.  I've yet to implement DNS look-up to resolve host names.
+- For TCP connections you have to specify the address as an IPv4 or IPv6 address and port.  I've yet to implement DNS look-up to resolve host names.
+- It doesn't currently support any encryption layer.  Until it does, don't use it to send any confidential information.
+
+In addition there is an edge case I am not sure how to handle from reading the JSON-RPC Version 2.0  specification.  There is a possibility of a response containing a `null` `id`.  For example, if a server receives invalid JSON for a request, it is supposed to respond with a parse error, but by its nature, a parse error means it very likely can't extract the `id` from the JSON, so the response containing the error can't have the `id` of the problematic request.   On the side receiving bad JSON, that's exactly what I do, send a parse error response, with a `null` `id`.  On the original requester's side I broadcast responses with a `null` value for `id` to all handlers for requests still waiting on responses, but I don't remove them as having been serviced to allow pending handlers for valid requests to subsequently receive their correct responses.  I'm not sure that's the right approach, but neither is directing the response to the handler for the most recently sent request, nor just ignoring the response.  Giving up and abruptly closing the connection doesn't seem approprate either.  Theoretically this shouldn't happen.  This package uses `Foundation`'s `JSONEncoder` to encode the JSON, and `JSONDecoder` to decode it.   The TCP protocol should prevent errors from creeping into the data in transmission (barring overt tampering by some router or man-in-the-middle).  So the only legitimiate reason this could happen is the software on the other side of the connection has buggy JSON encoder/decoder code.  Still, I'd like to handle it in an appropriate way.   If anyone reading knows the correct way to handle this situation, please let me know. 
 
 ## How to use it
 
