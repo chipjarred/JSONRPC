@@ -156,7 +156,7 @@ func clientWithDelegateExample()
 `JSONRPC` servers have three parts, two of which you've already met:
 - `JSONRPCSession`:  
 
-    This represents a connection from a single client.  The only difference between a server-side session and a client-side session is that server creates a one automatically  in response to receiving a connection from a client, whereas the client explicitly creates one to connect to a server.  Other than that, they are identical.  Once connected, either may send requests and notifications to the other whenever it likes.
+    This represents a connection from a single client.  The only difference between a server-side session and a client-side session is that server creates a session automatically  in response to receiving a connection from a client, whereas the client explicitly creates one to connect to a server.  Other than that, they are identical.  Once connected, either may send requests and notifications to the other whenever it likes.
 - `JSONRPCSessionDelegate`: 
 
     Whereas clients might not need a session delegate, server-side `JSONRCPSession` instances would be pretty useless without a delgate; however, they work exactly like client-side delegates.  It is in the delegate that you put your custom code for whatever requests and notifications you want your server to handle.
