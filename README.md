@@ -1,6 +1,6 @@
 # JSONRPC
 
-JSONRPC is a small Swift package for easily implementing both TCP and Unix domain socket-based JSON-RPC clients and servers.  I'm implementing it for my own use, but putting in the public domain for others to use as well.  It is a work in progress, and at the moment it has some limitations (which I plan to eliminate)
+`JSONRPC` is a small Swift package for easily implementing both TCP and Unix domain socket-based JSON-RPC clients and servers.  I'm implementing it for my own use, but putting in the public domain for others to use as well.  It is a work in progress, and at the moment it has some limitations (which I plan to eliminate)
 
 - It only supports JSON-RCP Version 2.0.  Some support for Version 1.0 is in place, but not yet available for use, and there is no code to handle Version 1.1.
 - It lacks support for batch requests at the moment.
@@ -10,7 +10,7 @@ JSONRPC is a small Swift package for easily implementing both TCP and Unix domai
 
 ### Sending requests and notifications
 
-For the simplest use, for which you only need to make requests to a server, and receive reponses to those requests, you simply create a `JSONRPCSession` object, which connects to the server. JSONRPC uses the [NIX package](https://github.com/chipjarred/NIX) to specify IP addresses.
+For the simplest use, for which you only need to make requests to a server, and receive reponses to those requests, you simply create a `JSONRPCSession` object, which connects to the server. `JSONRPC` uses the [`NIX` package](https://github.com/chipjarred/NIX) to specify IP addresses.
 
 Once you have a `JSONRPCSession` instance, you can send a request to the server by calling its `request` method, providing a completion handler to receive the server's response to the request.   Similarly, you can send a notification by calling its `notify` method.
 
@@ -64,9 +64,9 @@ func simpleClientExample()
 
 ### Handling incoming requests and notifications
 
-Of course, the simple example above doesn't make use of the fact that with JSON-RPC the server can send requests and notifications to the client too.  By default,  `JSONRPCSession` instances ignore incoming notifications, and respond to requests with a "method not found" error.
+Of course, the simple example above doesn't make use of the fact that with the JSON-RPC protocol the server can send requests and notifications to the client too.  By default,  `JSONRPCSession` instances ignore incoming notifications, and respond to requests with a "method not found" error.
 
-In order to respond to server requests and notifications, we create a delegate for our session.  The delegate must conform to the `JSONRPCSessionDelegate` protocol, which provides for a number of methods that can be called for various events by the `JSONRPCSession` to which it is attached.  All of these have default implementations, so you only need to implement the ones you need.
+In order to respond to server requests and notifications, we create a delegate for our session.  The delegate must conform to the `JSONRPCSessionDelegate` `protocol`, which provides for a number of methods that can be called for various events by the `JSONRPCSession` to which it is attached.  All of these have default implementations, so you only need to implement the ones you need.
 
 The most important of  the delegate methods to implement are
 - `respond(to: Request, for: JSONRPCSession) -> Response?`:
@@ -149,7 +149,7 @@ func clientWithDelegateExample()
 ```
 ### Making a server
 
-In JSONRPC servers have three parts, two of which you've already met:
+`JSONRPC` servers have three parts, two of which you've already met:
 - `JSONRPCSession`:  
     This represents a connection from a single client.  The only difference between a server-side session and a client-side session is that server creates a one automatically  in response to receiving a connection from a client, whereas the client explicitly creates one to connect to a server.  Other than that, they are identical.  Once connected, either may send requests and notifications to the other whenever it likes.
 - `JSONRPCSessionDelegate`: 
@@ -157,11 +157,11 @@ In JSONRPC servers have three parts, two of which you've already met:
 - `JSONRCPServer`:
     This is the thing that passively waits for incoming connections.  As soon as it receives one, it creates a `JSONRPCSession` to handle it, and resumes waiting for more connections.
     
-As with the client-side delegate, you create a delegate to handle the requests and notifications your server needs to handle.  However instead of creating a `JSONRPCSession` instance, you create a `JSONRPCServer` instead, passing the delegate's *type* to it.   The `JSONRPCSessionDelegate` protocol requires a default initializer (that is, one that does not take any parameters), and this is why.  When the server accepts a connection it creates a separate delegate instance for each `JSONRPCSession` to handle the session for that connection.
+As with the client-side delegate, you create a delegate to handle the requests and notifications your server needs to handle.  However instead of creating a `JSONRPCSession` instance, you create a `JSONRPCServer` instead, passing the delegate's *type* to it.   The `JSONRPCSessionDelegate` `protocol` requires a default initializer (that is, one that does not take any parameters), and this is why.  When the server accepts a connection it creates a separate delegate instance for each `JSONRPCSession` to handle the session for that connection.
 
 Unlike `JSONRPCSession` instances, which connect immediately, `JSONRPCServer`s must be started after creation.  This is to allow the host program to set up anything else it may need before accepting connections.   To start accepting connections, just call the `start()` method.
 
-Let's create  server that handles the requests the client from our previous example sends.  Since our client can respond to `"make_tea"` requests as well, we'll send that request wnever we receive a `"set"` notification indicating that the sender is confused:
+Let's create  server that handles the requests the client from our previous example sends.  Since our client can respond to `"make_tea"` requests as well, we'll send that request whenever we receive a `"set"` notification indicating that the sender is confused:
 
 ```swift
 import NIX
