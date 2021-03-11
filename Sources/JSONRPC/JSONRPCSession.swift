@@ -30,14 +30,14 @@ public class JSONRPCSession: JSONRPCLogger
     public typealias RequestCompletion = (Result<AnyJSONData,Error>) -> Void
     
     public weak var server: JSONRPCServer?
-    private let versionToUse: Version = .v2
+    internal let versionToUse: Version = .v2
     
     private let address: SocketAddress
     private let socket: SocketIODescriptor
     
     private var curRequestIDMutex = SpinLock()
     private var _curRequestID: Int = 1
-    private var nextRequestID: Int
+    internal var nextRequestID: Int
     {
         return curRequestIDMutex.withLock
         {
@@ -148,7 +148,7 @@ public class JSONRPCSession: JSONRPCLogger
     }
     
     // -------------------------------------
-    public func terminate()
+    public final func terminate()
     {
         guard state != .terminated else { return }
         self.log(.info, "Session termination requested.")
@@ -213,8 +213,20 @@ public class JSONRPCSession: JSONRPCLogger
     
     // MARK:- Handling incoming messages
     // -------------------------------------
-    func dispatch(jsonData data: Data)
+    private func dispatch(jsonData data: Data)
     {
+        /*
+         Although it's a good thing for type-safety, Swift makes us specify the
+         type of thing we're decoding, so we have to try to decode each
+         possibility.  Those are, in order, single notifications and single
+         requests, single responses, batched requests and notifications, and
+         finally batched responses.
+         
+         If it's none of those, then we try to parse it into some arbitray JSON
+         data, just to see if it's valid JSON.  If it is, then we reply with an
+         invalid request error.  If it's not even valid JSON, we reply with a
+         parse error.
+         */
         let decoder = JSONDecoder()
         if let genRequest = try? decoder.decode(GeneralRequest.self, from: data)
         {
@@ -246,6 +258,13 @@ public class JSONRPCSession: JSONRPCLogger
     // -------------------------------------
     private func handleBatchedRequests(_ batch: [GeneralRequest])
     {
+        /*
+         Since JSON-RPC V2.0 spec says that batched requests receive batched
+         responses, we can't just iterate through the batch dispatching the
+         requests and notifications through the normal mechanism.  Instead, we
+         have to capture the respones, put them into an array which we then
+         encode and send as the batched response.
+         */
         _ = async
         {
             /*
@@ -296,7 +315,11 @@ public class JSONRPCSession: JSONRPCLogger
             }
             else
             {
-                self.log(.error, "Unable to encode batch response")
+                self.log(
+                    .error,
+                    "Unable to encode batch response: "
+                    + "\(responses)"
+                )
                 self.send(.init(error: .internalError))
             }
         }
@@ -306,8 +329,8 @@ public class JSONRPCSession: JSONRPCLogger
     private func handleBatchedResponses(_ batch: [Response])
     {
         /*
-         There's nothing special about batched resposnes. Just dispatch each
-         one to its completion handler.
+         There's nothing special about batched responses. Just dispatch each
+         one to its completion handler through the normal mechanism.
          */
         _ = async {
             for response in batch { self.handleResponse(response) }
@@ -501,6 +524,66 @@ public class JSONRPCSession: JSONRPCLogger
             if request.id != nil { // Notifications don't get responses
                 handleResponse(Response(for: request, error: .internalError))
             }
+        }
+    }
+    
+    // MARK:- Sending Batched Requests
+    // -------------------------------------
+    public final func batch() -> Batch {  return Batch(self) }
+    
+    // -------------------------------------
+    public final func send(_ batch: Batch)
+    {
+        // JSON-RPC V2.0 spec says not to send empty batch.
+        guard batch.requests.count > 0 else
+        {
+            handleResponse(.init(error: .invalidRequest))
+            return
+        }
+        
+        var requests: [GeneralRequest] = []
+        requests.reserveCapacity(batch.requests.count)
+        
+        /*
+         Put requests and notifications in the requests batch, and register
+         request completion handlers.
+         */
+        for (request, completion) in batch.requests
+        {
+            assert(
+                (request.id == nil) == (completion == nil),
+                "Requests must have both an id and completion handler, and "
+                + "notificatons may not have either."
+            )
+            
+            if let requestID = request.id {
+                completionHandlers[requestID] = completion
+            }
+            
+            requests.append(request)
+        }
+
+        // Encode and send the whole batch
+        if let jsonData = try? JSONEncoder().encode(requests)
+        {
+            _ = async
+            {
+                do { try self.write(jsonData) }
+                catch
+                {
+                    self.log(
+                        .error,
+                        "Unable to send batched requests: "
+                        + "\(error.localizedDescription)"
+                    )
+                    self.handleResponse(.init(error: .internalError))
+                }
+            }
+        }
+        else
+        {
+            self.log(.error, "Unable to encode batched requests: \(requests)")
+            self.handleResponse(.init(error: .internalError))
         }
     }
     
