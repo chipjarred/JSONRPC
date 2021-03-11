@@ -71,8 +71,8 @@ In order to respond to server requests and notifications, we create a delegate f
 The most important of  the delegate methods to implement are
 - `respond(to: Request, for: JSONRPCSession) -> Response?`:
     This method is called whenever the delegate's `JSONRPCSession` receives a request.  Your implementation should inspect the request for its `method` and `parameters` properties, and handle them in whatever way is appropriate for your application; however, JSON-RPC requires that all requests be responded to.  
-        - For any request you  handle, construct a response by calling one the delegate's `response(for:result:) -> Response` or `response(for: error:) -> Response` methods and return it.   
-        - For requests you don't handle, simply return `nil`.  This tells `JSONRPCSession`  to respond with a "method not found" error. 
+            - For any request you  handle, construct a response by calling one the delegate's `response(for:result:) -> Response` or `response(for: error:) -> Response` methods and return it.   
+            - For requests you don't handle, simply return `nil`.  This tells `JSONRPCSession`  to respond with a "method not found" error. 
 - `handle(_ notification: Notification, for: JSONRPCSession)`:
     This method is called whenever the delegate's `JSONRPCSession` receives a notification.  You handle it much the same way as for requests; however, you do *not* return a `Response`.  Unhandled notifications are simply ignored.
 
