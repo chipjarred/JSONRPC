@@ -131,7 +131,7 @@ public class JSONRPCSession: JSONRPCLogger
         state = .quitting
         defer { state = .terminated }
         
-        delegate?.sessionWillTerminate()
+        delegate?.willTerminate(session: self)
 
         if let error = NIX.close(socket)
         {
@@ -143,7 +143,7 @@ public class JSONRPCSession: JSONRPCLogger
         
         self.log(.info, "Ended session with \(address).")
         
-        delegate?.sessionDidTerminate()
+        delegate?.didTerminate(session: self)
         server = nil
     }
     
@@ -158,7 +158,7 @@ public class JSONRPCSession: JSONRPCLogger
     // -------------------------------------
     internal final func start()
     {
-        delegate?.sessionWillStart()
+        delegate?.willStart(session: self)
         
         state = .started
         self.log(.info, "Started session with \(address).")
@@ -167,7 +167,7 @@ public class JSONRPCSession: JSONRPCLogger
         
         var lineReader = SocketLineReader(logger: self)
         
-        delegate?.sessionDidStart()
+        delegate?.didStart(session: self)
         
         while state != .quitting
         {
@@ -231,7 +231,7 @@ public class JSONRPCSession: JSONRPCLogger
     
     // -------------------------------------
     public final func handleNotification(_ notification: Notification) {
-        _ = async { self.delegate?.handle(notification) }
+        _ = async { self.delegate?.handle(notification, for: self) }
     }
     
     // -------------------------------------
@@ -239,7 +239,7 @@ public class JSONRPCSession: JSONRPCLogger
     {
         _ = async
         {
-            self.send(self.delegate?.respond(to: request)
+            self.send(self.delegate?.respond(to: request, for: self)
                 ?? Response(for: request, error: .methodNotFound)
             )
         }

@@ -23,7 +23,9 @@ class Client_Server_UnitTests: XCTestCase
         // -------------------------------------
         final class ServerSessionDelegate: JSONRPCSessionDelegate
         {
-            func respond(to request: Request) -> Response?
+            func respond(
+                to request: Request,
+                for _ :JSONRPCSession) -> Response?
             {
                 if request.method == "foo" {
                     return response(for: request, result: "bar")

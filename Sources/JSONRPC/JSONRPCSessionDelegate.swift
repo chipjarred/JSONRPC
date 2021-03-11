@@ -23,14 +23,13 @@ import Foundation
 // -------------------------------------
 public protocol JSONRPCSessionDelegate: JSONRPCLogger
 {
-    func sessionWillStart()
-    func sessionDidStart()
-    func sessionWillTerminate()
-    func sessionDidTerminate()
+    func willStart(session: JSONRPCSession)
+    func didStart(session: JSONRPCSession)
+    func willTerminate(session: JSONRPCSession)
+    func didTerminate(session: JSONRPCSession)
     
-    func respond(to request: Request) -> Response?
-    func handle(_ response: Response)
-    func handle(_ notification: Notification)
+    func respond(to request: Request, for session: JSONRPCSession) -> Response?
+    func handle(_ notification: Notification, for session: JSONRPCSession)
     
     init()
 }
@@ -38,14 +37,20 @@ public protocol JSONRPCSessionDelegate: JSONRPCLogger
 // -------------------------------------
 public extension JSONRPCSessionDelegate
 {
-    @inlinable func sessionWillStart() { }
-    @inlinable func sessionDidStart() { }
-    @inlinable func sessionWillTerminate() { }
-    @inlinable func sessionDidTerminate() { }
+    @inlinable func willStart(session: JSONRPCSession) { }
+    @inlinable func didStart(session: JSONRPCSession) { }
+    @inlinable func willTerminate(session: JSONRPCSession) { }
+    @inlinable func didTerminate(session: JSONRPCSession) { }
     
-    @inlinable func respond(to: Request) -> Response? { return nil }
-    @inlinable func handle(_ response: Response) { }
-    @inlinable func handle(_ notification: Notification) { }
+    // -------------------------------------
+    @inlinable
+    func respond(to: Request, for session: JSONRPCSession) -> Response? {
+        return nil
+    }
+    
+    // -------------------------------------
+    @inlinable
+    func handle(_ notification: Notification, for session: JSONRPCSession) { }
     
     // -------------------------------------
     func response<R: Codable>(for request: Request, result: R) -> Response {

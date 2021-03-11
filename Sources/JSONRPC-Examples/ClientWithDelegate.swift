@@ -21,11 +21,13 @@
 import NIX
 import JSONRPC
 
-class ExampleDelegate: JSONRPCSessionDelegate
+class ExampleClientDelegate: JSONRPCSessionDelegate
 {
     required public init() { }
     
-    public func respond(to request: Request) -> Response?
+    public func respond(
+        to request: Request,
+        for session: JSONRPCSession) -> Response?
     {
         if request.method == "make_tea"
         {
@@ -44,7 +46,7 @@ func clientWithDelegateExample()
     // Assuming a server is already running on the local machine
     guard let session = JSONRPCSession(
         serverAddress: .init(ip4Address: .loopback, port: 2020),
-        delegate: ExampleDelegate())
+        delegate: ExampleClientDelegate())
     else { fatalError("Unable to create JSRONRPCSession") }
     
     // Send a request to the server
