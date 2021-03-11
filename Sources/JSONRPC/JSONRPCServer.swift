@@ -78,6 +78,15 @@ public class JSONRPCServer: JSONRPCLogger
             )
             return nil
         }
+        
+        if address.family == .inet6,
+           let error = NIX.setsockopt(socket, .ipV6Only(false))
+        {
+            Self.log(
+                .warn,
+                "Unable to turn off ipV6Only option: \(error)"
+            )
+        }
 
         if let error = NIX.bind(self.socket, address)
         {

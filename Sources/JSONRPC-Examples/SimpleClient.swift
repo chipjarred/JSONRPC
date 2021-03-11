@@ -24,8 +24,7 @@ import JSONRPC
 func simpleClientExample()
 {
     // Assuming a server is already running on the local machine
-    guard let session = JSONRPCSession(
-        serverAddress: .init(ip4Address: .loopback, port: 2020))
+    guard let session = JSONRPCSession.connect(to: "localhost", port: 2020)
     else { fatalError("Unable to create JSRONRPCSession") }
     
     // Send a request to the server

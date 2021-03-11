@@ -44,9 +44,10 @@ class ExampleClientDelegate: JSONRPCSessionDelegate
 func clientWithDelegateExample()
 {
     // Assuming a server is already running on the local machine
-    guard let session = JSONRPCSession(
-        serverAddress: .init(ip4Address: .loopback, port: 2020),
-        delegate: ExampleClientDelegate())
+    guard let session = JSONRPCSession.connect(
+            to: "localhost",
+            port: 2020,
+            delegate: ExampleClientDelegate())
     else { fatalError("Unable to create JSRONRPCSession") }
     
     // Send a request to the server

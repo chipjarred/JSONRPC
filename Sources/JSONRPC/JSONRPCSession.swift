@@ -79,6 +79,52 @@ public class JSONRPCSession: JSONRPCLogger
     }
     
     // -------------------------------------
+    public static func connect(
+        to host: String,
+        port: Int,
+        delegate: JSONRPCSessionDelegate? = nil) -> JSONRPCSession?
+    {
+        let addresses: [SocketAddress]
+        switch NIX.sockaddr(for: host, port: port, socketType: .stream)
+        {
+            case .success(let addrs): addresses = addrs
+            case .failure(_): return nil
+        }
+        
+        guard addresses.count > 0 else { return nil }
+        
+        var ip4ServerAddress: SocketAddress? = nil
+        var ip6ServerAddress: SocketAddress? = nil
+        
+        for address in addresses
+        {
+            if address.family == .inet6 {
+                ip6ServerAddress = ip6ServerAddress ?? address
+            }
+            else if address.family == .inet4 {
+                ip4ServerAddress = ip4ServerAddress ?? address
+            }
+        }
+
+        // Prefer IPv% if we can get it.  If not, fail-over to IPv4
+        if let serverAddress = ip6ServerAddress,
+           let client = JSONRPCSession(
+            serverAddress: serverAddress,
+            delegate: delegate)
+        {
+            return client
+        }
+        else if let serverAddress = ip4ServerAddress,
+           let client = JSONRPCSession(
+            serverAddress: serverAddress,
+            delegate: delegate)
+        {
+            return client
+        }
+        else { unreachable() }
+    }
+    
+    // -------------------------------------
     public init?(
         serverAddress: SocketAddress,
         delegate: JSONRPCSessionDelegate? = nil)

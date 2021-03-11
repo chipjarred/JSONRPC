@@ -21,32 +21,13 @@
 import NIX
 import JSONRPC
 
-class BatchExampleClientDelegate: JSONRPCSessionDelegate
-{
-    required public init() { }
-    
-    public func respond(
-        to request: Request,
-        for session: JSONRPCSession) -> Response?
-    {
-        if request.method == "make_tea"
-        {
-            return response(
-                for: request,
-                result:["something that is almost, but not entirely unlike tea"]
-            )
-        }
-        
-        return nil
-    }
-}
-
 func batchRequestExample()
 {
     // Assuming a server is already running on the local machine
-    guard let session = JSONRPCSession(
-        serverAddress: .init(ip4Address: .loopback, port: 2020),
-        delegate: ExampleClientDelegate())
+    guard let session = JSONRPCSession.connect(
+            to: "localhost",
+            port: 2020,
+            delegate: ExampleClientDelegate())
     else { fatalError("Unable to create JSRONRPCSession") }
     
     // Create a batch of requests

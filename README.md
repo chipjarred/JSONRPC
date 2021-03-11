@@ -1,6 +1,6 @@
 # JSONRPC
 
-`JSONRPC` is a small Swift package for easily implementing both TCP and Unix domain socket-based JSON-RPC clients and servers.  I'm implementing it for my own use, but putting in the public domain for others to use as well.  It is a work in progress, and at the moment it has some limitations (which I plan to eliminate):
+`JSONRPC` is a small Swift package for easily implementing both TCP and Unix domain socket-based JSON-RPC clients and servers.  I'm implementing it for my own use, but putting it in the public domain for others to use as well.  It is a work in progress, and at the moment it has some limitations (which I plan to eliminate):
 
 - It only supports JSON-RCP Version 2.0.  There is code to support Version 1.0 in the various Request/Response types, but not yet available for use to actually use in sessions, and there is no code to handle Version 1.1 specifically.
 - For TCP connections you have to specify the address as an IPv4 or IPv6 address and port.  I've yet to implement DNS look-up to resolve host names.
@@ -25,8 +25,7 @@ import JSONRPC
 func simpleClientExample()
 {
     // Assuming a server is already running on the local machine
-    guard let session = JSONRPCSession(
-        serverAddress: .init(ip4Address: .loopback, port: 2020))
+    guard let session = JSONRPCSession.connect(to: "localhost", port: 2020)
     else { fatalError("Unable to create JSRONRPCSession") }
     
     // Send a request to the server
@@ -112,9 +111,10 @@ class ExampleClientDelegate: JSONRPCSessionDelegate
 func clientWithDelegateExample()
 {
     // Assuming a server is already running on the local machine
-    guard let session = JSONRPCSession(
-        serverAddress: .init(ip4Address: .loopback, port: 2020),
-        delegate: ExampleClientDelegate())
+    guard let session = JSONRPCSession.connect(
+            to: "localhost",
+            port: 2020,
+            delegate: ExampleClientDelegate())
     else { fatalError("Unable to create JSRONRPCSession") }
     
     // Send a request to the server
@@ -162,9 +162,10 @@ import JSONRPC
 func batchRequestExample()
 {
     // Assuming a server is already running on the local machine
-    guard let session = JSONRPCSession(
-        serverAddress: .init(ip4Address: .loopback, port: 2020),
-        delegate: ExampleClientDelegate())
+    guard let session = JSONRPCSession.connect(
+            to: "localhost",
+            port: 2020,
+            delegate: ExampleClientDelegate())
     else { fatalError("Unable to create JSRONRPCSession") }
     
     // Create a batch of requests
@@ -248,7 +249,7 @@ As with the client-side delegate, you create a delegate to handle the requests a
 
 Unlike `JSONRPCSession` instances, which connect immediately, `JSONRPCServer`s must be started after creation.  This is to allow the host program to set up anything else it may need before accepting connections.   To start accepting connections, just call the `start()` method.
 
-Let's create  server that handles the requests the client from our previous example sends.  Since our client can respond to `"make_tea"` requests as well, we'll send that request whenever we receive a `"set"` notification indicating that the sender is confused:
+Let's create a server that handles the requests the client from our previous example sends.  Since our client can respond to `"make_tea"` requests as well, we'll send that request whenever we receive a `"set"` notification indicating that the sender is confused:
 
 ```swift
 import NIX
