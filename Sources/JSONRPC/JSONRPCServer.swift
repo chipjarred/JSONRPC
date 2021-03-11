@@ -41,6 +41,19 @@ public class JSONRPCServer: JSONRPCLogger
     private let delegateType: JSONRPCSessionDelegate.Type
     
     // -------------------------------------
+    public convenience init?<Delegate: JSONRPCSessionDelegate>(
+        port: Int,
+        maximumConnections: Int,
+        typeOfDelegate: Delegate.Type)
+    {
+        self.init(
+            boundTo: SocketAddress(ip6Address: .any, port: port),
+            maximumConnections: maximumConnections,
+            typeOfDelegate: typeOfDelegate
+        )
+    }
+    
+    // -------------------------------------
     public init?<Delegate: JSONRPCSessionDelegate>(
         boundTo address: SocketAddress,
         maximumConnections: Int,

@@ -3,7 +3,6 @@
 `JSONRPC` is a small Swift package for easily implementing both TCP and Unix domain socket-based JSON-RPC clients and servers.  I'm implementing it for my own use, but putting it in the public domain for others to use as well.  It is a work in progress, and at the moment it has some limitations (which I plan to eliminate):
 
 - It only supports JSON-RCP Version 2.0.  There is code to support Version 1.0 in the various Request/Response types, but not yet available for use to actually use in sessions, and there is no code to handle Version 1.1 specifically.
-- For TCP connections you have to specify the address as an IPv4 or IPv6 address and port.  I've yet to implement DNS look-up to resolve host names.
 - It doesn't currently support any encryption layer.  Until it does, don't use it to send any confidential information.
 
 In addition there is an edge case I am not sure how to handle from reading the JSON-RPC Version 2.0  specification.  There is a possibility of a response containing a `null` `id`.  For example, if a server receives invalid batch request,  it is supposed to reply with one "invalid request" error for the whole batch and that response has a `null`, `id`.   The same thing can happen even on a single request that is invalid JSON, which causes a parse error.  Making the response is the easy part.  The difficult part is what to do as the original requester receiving such a response.  This would not be a problem if the the protocol were supposed to be used synchronously.  The sender would just block until it got a respnose, and since no more requests had been sent, it would know that the error applied to the most recent request (or batch of requests).   But who wants their code to block?   Multiple requests, and even multiple batches may have been sent before the error arrives, and without an `id` there's no way of knowing which request(s) it applies to.  The way I currently handle this situation is to broadcast responses with a `null`  `id` to all handlers for requests that are still waiting on responses, but I don't remove them as having been serviced to allow pending handlers for valid requests to subsequently receive their correct responses.  I'm not sure that's the right approach, but neither is directing the response to the handler for the most recently sent request, nor just ignoring the response.  Giving up and abruptly closing the connection doesn't seem approprate either.  I'd like to handle it in an appropriate way.   If anyone reading knows the correct way to handle this situation, please let me know.
@@ -12,14 +11,17 @@ In addition there is an edge case I am not sure how to handle from reading the J
 
 ### Sending Requests and Notifications
 
-For the simplest use, for which you only need to make requests to a server, and receive reponses to those requests, you simply create a `JSONRPCSession` object, which connects to the server. `JSONRPC` uses the [`NIX` package](https://github.com/chipjarred/NIX) to specify IP addresses.
+For the simplest use, for which you only need to make requests to a server, and receive reponses to those requests, you simply create a `JSONRPCSession` object, which connects to the server.
+
+To create  `JSONRPCSesson` by specifying a host name and port number to connect to, you call its `connect(to host:String, port: Int)` static method.  This will attempt to connect to the the specified server first with an IPv6 connection, and if that fails it will try IPv4. 
+
+Alternatively, you can create a connection by using `JSONRPCSession.init(server: SocketAddress, delegate)`', where `SocketAddress` is defined in the [NIX package](https://github.com/chipjarred/NIX). `NIX` is a thin layer over the underlying POSIX system API (`Darwin` for macOS, or `Glibc` for Linux) that gives a bit more type-safety than using POSIX calls directly.  With this method you can specify an IPv6, IPv4 or a Unix domain server.
 
 Once you have a `JSONRPCSession` instance, you can send a request to the server by calling its `request` method, providing a completion handler to receive the server's response to the request.   Similarly, you can send a notification by calling its `notify` method.
 
 For example:
 
 ```swift
-import NIX
 import JSONRPC
 
 func simpleClientExample()
@@ -82,10 +84,6 @@ The most important of  the delegate methods to implement are
 We now modify the previous example to handle incoming requests:
 
 ```swift
-import NIX
-import JSONRPC
-
-import NIX
 import JSONRPC
 
 class ExampleClientDelegate: JSONRPCSessionDelegate
@@ -156,7 +154,6 @@ The JSON-RPC protocol allows sending batched requests.  To do this, the requeste
 Let's modify our last client example to send a batch.  It will batch two requests and one notification:
 
 ```swift
-import NIX
 import JSONRPC
 
 func batchRequestExample()
@@ -252,7 +249,6 @@ Unlike `JSONRPCSession` instances, which connect immediately, `JSONRPCServer`s m
 Let's create a server that handles the requests the client from our previous example sends.  Since our client can respond to `"make_tea"` requests as well, we'll send that request whenever we receive a `"set"` notification indicating that the sender is confused:
 
 ```swift
-import NIX
 import JSONRPC
 
 class ExampleServerDelegate: JSONRPCSessionDelegate
@@ -312,7 +308,7 @@ class ExampleServerDelegate: JSONRPCSessionDelegate
 func makeAndStartExampleServer() -> JSONRPCServer
 {
     guard let server = JSONRPCServer(
-            boundTo: SocketAddress(ip4Address: .any, port: 2020),
+            port: 2020,
             maximumConnections: 42,
             typeOfDelegate: ExampleServerDelegate.self)
     else { fatalError("Unable to create server") }

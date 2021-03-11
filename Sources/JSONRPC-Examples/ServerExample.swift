@@ -18,7 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import NIX
 import JSONRPC
 
 class ExampleServerDelegate: JSONRPCSessionDelegate
@@ -78,7 +77,7 @@ class ExampleServerDelegate: JSONRPCSessionDelegate
 func makeAndStartExampleServer() -> JSONRPCServer
 {
     guard let server = JSONRPCServer(
-            boundTo: SocketAddress(ip4Address: .any, port: 2020),
+            port: 2020,
             maximumConnections: 42,
             typeOfDelegate: ExampleServerDelegate.self)
     else { fatalError("Unable to create server") }
