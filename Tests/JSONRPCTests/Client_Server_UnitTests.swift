@@ -25,7 +25,7 @@ class Client_Server_UnitTests: XCTestCase
         )
         
         // -------------------------------------
-        final class ServerSessionDelegate: JSONRPCSessionDelegate
+        final class ServerSessionDelegate: JSONRPCServerSessionDelegate
         {
             func respond(
                 to request: Request,
@@ -88,7 +88,7 @@ class Client_Server_UnitTests: XCTestCase
         )
         
         // -------------------------------------
-        final class ServerSessionDelegate: JSONRPCSessionDelegate
+        final class ServerSessionDelegate: JSONRPCServerSessionDelegate
         {
             func respond(
                 to request: Request,
@@ -152,7 +152,7 @@ class Client_Server_UnitTests: XCTestCase
         )
         
         // -------------------------------------
-        final class ServerSessionDelegate: JSONRPCSessionDelegate
+        final class ServerSessionDelegate: JSONRPCServerSessionDelegate
         {
             func respond(
                 to request: Request,
@@ -216,7 +216,7 @@ class Client_Server_UnitTests: XCTestCase
         )
         
         // -------------------------------------
-        final class ServerSessionDelegate: JSONRPCSessionDelegate
+        final class ServerSessionDelegate: JSONRPCServerSessionDelegate
         {
             func respond(
                 to request: Request,
@@ -279,7 +279,7 @@ class Client_Server_UnitTests: XCTestCase
         
         
         // -------------------------------------
-        final class ServerSessionDelegate: JSONRPCSessionDelegate
+        final class ServerSessionDelegate: JSONRPCServerSessionDelegate
         {
             static var notificationStr = ""
             

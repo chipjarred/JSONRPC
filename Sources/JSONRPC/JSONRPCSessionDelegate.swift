@@ -30,8 +30,6 @@ public protocol JSONRPCSessionDelegate: JSONRPCLogger
     
     func respond(to request: Request, for session: JSONRPCSession) -> Response?
     func handle(_ notification: Notification, for session: JSONRPCSession)
-    
-    init()
 }
 
 // -------------------------------------
@@ -71,4 +69,9 @@ public extension JSONRPCSessionDelegate
     func response(for request: Request, error: Error) -> Response {
         return Response(for: request, error: error)
     }
+}
+
+// -------------------------------------
+public protocol JSONRPCServerSessionDelegate: JSONRPCSessionDelegate {
+    init()
 }

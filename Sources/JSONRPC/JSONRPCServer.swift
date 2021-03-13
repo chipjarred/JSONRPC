@@ -38,10 +38,10 @@ public class JSONRPCServer: JSONRPCLogger
     private static let dispatchQueue =
         DispatchQueue(label: "JSONRPCServer-\(UUID())", attributes: .concurrent)
     
-    private let delegateType: JSONRPCSessionDelegate.Type
+    private let delegateType: JSONRPCServerSessionDelegate.Type
     
     // -------------------------------------
-    public convenience init?<Delegate: JSONRPCSessionDelegate>(
+    public convenience init?<Delegate: JSONRPCServerSessionDelegate>(
         port: Int,
         maximumConnections: Int,
         typeOfDelegate: Delegate.Type)
@@ -52,9 +52,9 @@ public class JSONRPCServer: JSONRPCLogger
             typeOfDelegate: typeOfDelegate
         )
     }
-    
+     
     // -------------------------------------
-    public init?<Delegate: JSONRPCSessionDelegate>(
+    public init?<Delegate: JSONRPCServerSessionDelegate>(
         boundTo address: SocketAddress,
         maximumConnections: Int,
         typeOfDelegate: Delegate.Type)

@@ -20,7 +20,7 @@
 
 import JSONRPC
 
-class ExampleServerDelegate: JSONRPCSessionDelegate
+class ExampleServerDelegate: JSONRPCServerSessionDelegate
 {
     required public init() { }
     

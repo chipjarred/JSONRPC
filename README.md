@@ -231,18 +231,20 @@ func batchRequestExample()
 ```
 ### Making a Server
 
-`JSONRPC` servers have three parts, two of which you've already met:
+`JSONRPC` servers have three parts, one of which you've already met:
 - `JSONRPCSession`:  
 
     This represents a connection from a single client.  The only difference between a server-side session and a client-side session is that server creates a session automatically  in response to receiving a connection from a client, whereas the client explicitly creates one to connect to a server.  Other than that, they are identical.  Once connected, either may send requests and notifications to the other whenever it likes.
-- `JSONRPCSessionDelegate`: 
+    
+- `JSONRPCServerSessionDelegate`: 
 
-    Whereas clients might not need a session delegate, server-side `JSONRCPSession` instances would be pretty useless without a delgate; however, they work exactly like client-side delegates.  It is in the delegate that you put your custom code for whatever requests and notifications you want your server to handle.
+    Whereas clients might not need a session delegate, server-side `JSONRCPSession` instances would be pretty useless without a delgate; however, they work exactly like client-side delegates.  It is in the delegate that you put your custom code for whatever requests and notifications you want your server to handle.  For a server, the delegate must conform to `JSONRPCServerSessionDelegate` rather than `JSONRPCSessionDelegate`.
+    
 - `JSONRCPServer`:
 
     This is the thing that passively waits for incoming connections.  As soon as it receives one, it creates a `JSONRPCSession` to handle it, and resumes waiting for more connections.
     
-As with the client-side delegate, you create a delegate to handle the requests and notifications your server needs to handle.  However instead of creating a `JSONRPCSession` instance, you create a `JSONRPCServer` instead, passing the delegate's *type* to it.   The `JSONRPCSessionDelegate` `protocol` requires a default initializer (that is, one that does not take any parameters), and this is why.  When the server accepts a connection it creates a separate delegate instance for each `JSONRPCSession` to handle the session for that connection.
+As with the client-side delegate, you create a delegate to handle the requests and notifications your server needs to handle.  However instead of creating a `JSONRPCSession` instance, you create a `JSONRPCServer` instead, passing the delegate's *type* to it.   The `JSONRPCServerSessionDelegate` `protocol` requires a default initializer (that is, one that does not take any parameters), and this is why.  When the server accepts a connection it creates a separate delegate instance for each `JSONRPCSession` to handle the session for that connection.
 
 Unlike `JSONRPCSession` instances, which connect immediately, `JSONRPCServer`s must be started after creation.  This is to allow the host program to set up anything else it may need before accepting connections.   To start accepting connections, just call the `start()` method.
 
@@ -251,7 +253,7 @@ Let's create a server that handles the requests the client from our previous exa
 ```swift
 import JSONRPC
 
-class ExampleServerDelegate: JSONRPCSessionDelegate
+class ExampleServerDelegate: JSONRPCServerSessionDelegate
 {
     required public init() { }
     
