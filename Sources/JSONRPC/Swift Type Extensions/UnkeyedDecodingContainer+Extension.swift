@@ -41,13 +41,20 @@ extension UnkeyedDecodingContainer
             {
                 array.append(nestedDictionary)
             }
-            else if let nestedArray = try? decode(Array<Any?>.self) {
+            else if let nestedArray = try? decodeNestedArray() {
                 array.append(nestedArray)
             }
         }
         return array
     }
     
+    // -------------------------------------
+    mutating func decodeNestedArray() throws -> [Any?]
+    {
+        var container = try nestedUnkeyedContainer()
+        return try container.decode([Any?].self)
+    }
+        
     // -------------------------------------
     mutating func decode(
         _ type: Dictionary<String, Any>.Type) throws -> Dictionary<String, Any>

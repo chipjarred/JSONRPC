@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import JSONRPC
+import JSONRPC
 import NIX
 import HostOS
 
