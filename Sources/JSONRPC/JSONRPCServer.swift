@@ -67,6 +67,19 @@ public class JSONRPCServer: JSONRPCLogger
             case .inet4: (domain, protocolFamily) = (.inet4, .tcp)
             case .inet6: (domain, protocolFamily) = (.inet6, .tcp)
             case .unix : (domain, protocolFamily) = (.local, .ip)
+                if let unixPath = address.asUnix?.path.rawValue
+                {
+                    if let error = NIX.unlink(unixPath),
+                       error.errno != HostOS.ENOENT
+                    {
+                        Self.log(
+                            .error,
+                            "Unable to remove Unix domain socket path, "
+                            + "\"unixPath\": \(error)"
+                        )
+                        return nil
+                    }
+                }
         }
         
         self.address = address
