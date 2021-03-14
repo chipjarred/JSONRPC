@@ -73,12 +73,5 @@ public extension JSONRPCSessionDelegate
 
 // -------------------------------------
 public protocol JSONRPCServerSessionDelegate: JSONRPCSessionDelegate {
-    func willStart(session: JSONRPCSession)
-    func didStart(session: JSONRPCSession)
-    func willTerminate(session: JSONRPCSession)
-    func didTerminate(session: JSONRPCSession)
-    
-    func respond(to request: Request, for session: JSONRPCSession) -> Response?
-    func handle(_ notification: Notification, for session: JSONRPCSession)
     init()
 }
