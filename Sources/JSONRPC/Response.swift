@@ -33,6 +33,16 @@ public struct Response: Codable
     public let error: Error?
     
     // -------------------------------------
+    public init?(json: String)
+    {
+        guard let response = try? JSONDecoder()
+                .decode(Response.self, from: json.data(using: .utf8)!)
+        else { return nil }
+        
+        self = response
+    }
+
+    // -------------------------------------
     internal init(for request: Request, result: [Any?])
     {
         self.init(

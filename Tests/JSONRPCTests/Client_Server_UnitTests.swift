@@ -365,7 +365,7 @@ class Client_Server_UnitTests: XCTestCase
         client.send(batch)
 
         let sem = DispatchSemaphore(value: 0)
-        _ = sem.wait(timeout: .now() + .milliseconds(600))
+        _ = sem.wait(timeout: .now() + .milliseconds(700))
         sem.signal()
         
         XCTAssertEqual(

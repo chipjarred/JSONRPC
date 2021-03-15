@@ -30,6 +30,16 @@ public struct Notification
     public let jsonrpc: String? // For version 2 JSON-RPC
     public let method: String
     public let params: Parameters?
+    
+    // -------------------------------------
+    public init?(json: String)
+    {
+        guard let genRequest = try? JSONDecoder()
+                .decode(GeneralRequest.self, from: json.data(using: .utf8)!)
+        else { return nil }
+        
+        self.init(from: genRequest)
+    }
 
     // -------------------------------------
     @usableFromInline

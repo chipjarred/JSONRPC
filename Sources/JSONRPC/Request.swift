@@ -82,6 +82,16 @@ public struct Request
     public let params: Parameters?
     
     // -------------------------------------
+    public init?(json: String)
+    {
+        guard let genRequest = try? JSONDecoder()
+                .decode(GeneralRequest.self, from: json.data(using: .utf8)!)
+        else { return nil }
+        
+        self.init(from: genRequest)
+    }
+
+    // -------------------------------------
     @usableFromInline
     internal init(from request: GeneralRequest)
     {
