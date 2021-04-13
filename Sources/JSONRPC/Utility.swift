@@ -78,7 +78,7 @@ internal func log(
     {
         switch level
         {
-            case .error, .critical:
+            case .critical:
                 assertionFailure(message)
             default: break
         }
