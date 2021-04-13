@@ -11,6 +11,7 @@ public func allTests() -> [XCTestCaseEntry]
         testCase(V2_Response_UnitTests.allTests),
         testCase(SocketLineReader_UnitTests.allTests),
         testCase(Client_Server_UnitTests.allTests),
+        testCase(Utility_UnitTests.allTests),
     ]
 }
 #endif

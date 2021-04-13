@@ -150,32 +150,7 @@ public class JSONRPCSession: JSONRPCLogger
         }
         sem.wait(); sem.signal()
     }
-    
-    // -------------------------------------
-    private static func dnsLookup(host: String) -> [SocketAddress]?
-    {
-        let host = CFHostCreateWithName(nil, host as CFString)
-            .takeRetainedValue()
         
-        CFHostStartInfoResolution(host, .addresses, nil)
-        
-        var success: DarwinBoolean = false
-        if let addresses = CFHostGetAddressing(host, &success)?
-            .takeUnretainedValue() as NSArray?
-        {
-            var resultAddresses = [SocketAddress]()
-            resultAddresses.reserveCapacity(addresses.count)
-            for case let anAddress as NSData in addresses
-            {
-                let socketAddress = anAddress.bytes
-                    .assumingMemoryBound(to: SocketAddress.self).pointee
-                resultAddresses.append(socketAddress)
-            }
-            return resultAddresses
-        }
-        return nil
-    }
-    
     // -------------------------------------
     private static func socketAddress(
         for host: String,
