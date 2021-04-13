@@ -86,29 +86,11 @@ public class JSONRPCSession: JSONRPCLogger
         port: Int,
         delegate: JSONRPCSessionDelegate? = nil) -> JSONRPCSession?
     {
-        let addresses: [SocketAddress]
-        switch NIX.sockaddr(for: host, port: port, socketType: .stream)
-        {
-            case .success(let addrs): addresses = addrs
-            case .failure(_): return nil
-        }
-        
-        guard addresses.count > 0 else { return nil }
-        
-        var ip4ServerAddress: SocketAddress? = nil
-        var ip6ServerAddress: SocketAddress? = nil
-        
-        for address in addresses
-        {
-            if address.family == .inet6 {
-                ip6ServerAddress = ip6ServerAddress ?? address
-            }
-            else if address.family == .inet4 {
-                ip4ServerAddress = ip4ServerAddress ?? address
-            }
-        }
+        guard let (ip4ServerAddress, ip6ServerAddress) =
+                socketAddress(for: host, port: port)
+        else { return nil }
 
-        // Prefer IPv% if we can get it.  If not, fail-over to IPv4
+        // Prefer IPv6 if we can get it.  If not, fail-over to IPv4
         if let serverAddress = ip6ServerAddress,
            let client = JSONRPCSession(
             serverAddress: serverAddress,
@@ -169,6 +151,67 @@ public class JSONRPCSession: JSONRPCLogger
         sem.wait(); sem.signal()
     }
     
+    // -------------------------------------
+    private static func dnsLookup(host: String) -> [SocketAddress]?
+    {
+        let host = CFHostCreateWithName(nil, host as CFString)
+            .takeRetainedValue()
+        
+        CFHostStartInfoResolution(host, .addresses, nil)
+        
+        var success: DarwinBoolean = false
+        if let addresses = CFHostGetAddressing(host, &success)?
+            .takeUnretainedValue() as NSArray?
+        {
+            var resultAddresses = [SocketAddress]()
+            resultAddresses.reserveCapacity(addresses.count)
+            for case let anAddress as NSData in addresses
+            {
+                let socketAddress = anAddress.bytes
+                    .assumingMemoryBound(to: SocketAddress.self).pointee
+                resultAddresses.append(socketAddress)
+            }
+            return resultAddresses
+        }
+        return nil
+    }
+    
+    // -------------------------------------
+    private static func socketAddress(
+        for host: String,
+        port: Int) -> (SocketAddress?, SocketAddress?)?
+    {
+        let addresses: [SocketAddress]
+        switch NIX.sockaddr(for: host, port: port, socketType: .stream)
+        {
+            case .success(let addrs): addresses = addrs
+            case .failure(_):
+                guard let addrs = dnsLookup(host: host) else { return nil }
+                addresses = addrs
+        }
+        
+        guard addresses.count > 0 else { return nil }
+        
+        var ip4ServerAddress: SocketAddress? = nil
+        var ip6ServerAddress: SocketAddress? = nil
+        
+        for address in addresses
+        {
+            if var address = address.asINET6
+            {
+                address.port = port
+                ip6ServerAddress = ip6ServerAddress ?? SocketAddress(address)
+            }
+            else if var address = address.asINET4
+            {
+                address.port = port
+                ip4ServerAddress = ip4ServerAddress ?? SocketAddress(address)
+            }
+        }
+        
+        return (ip4: ip4ServerAddress, ip6: ip6ServerAddress)
+    }
+
     // -------------------------------------
     deinit { cleanUp() }
     
