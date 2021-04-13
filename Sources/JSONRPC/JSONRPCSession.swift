@@ -63,6 +63,8 @@ public class JSONRPCSession: JSONRPCLogger
     private var state: State = .initialized
     
     public var delegate: JSONRPCSessionDelegate? = nil
+    public var sendLogger: ((Data) -> Void)? = nil
+    public var receiveLogger: ((Data) -> Void)? = nil
     
     // -------------------------------------
     internal init(
@@ -77,7 +79,7 @@ public class JSONRPCSession: JSONRPCLogger
         self.state = .initialized
         self.delegate = delegate
     }
-    
+
     // -------------------------------------
     public static func connect(
         to host: String,
@@ -194,6 +196,23 @@ public class JSONRPCSession: JSONRPCLogger
     }
     
     // -------------------------------------
+    /**
+     Set a closure to log raw JSON that is set
+     */
+    public func logSend(with logger: @escaping (Data) -> Void) {
+        sendLogger = logger
+    }
+    
+    // -------------------------------------
+    /*
+     Set a closure to log raw JSON that is received
+     */
+    public func logReceive(with logger: @escaping (Data) -> Void) {
+        receiveLogger = logger
+    }
+
+    
+    // -------------------------------------
     public final func terminate()
     {
         guard state != .terminated else { return }
@@ -232,6 +251,9 @@ public class JSONRPCSession: JSONRPCLogger
     {
         var data = data
         data.append(SocketLineReader.newLine)
+        
+        sendLogger?(data)
+        
         let bytesWritten: Int
         switch writeMutex.withLock({ NIX.write(socket, data) })
         {
@@ -261,6 +283,8 @@ public class JSONRPCSession: JSONRPCLogger
     // -------------------------------------
     private func dispatch(jsonData data: Data)
     {
+        receiveLogger?(data)
+        
         /*
          Although it's a good thing for type-safety, Swift makes us specify the
          type of thing we're decoding, so we have to try to decode each
