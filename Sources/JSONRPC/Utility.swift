@@ -20,6 +20,7 @@
 
 import Foundation
 import NIX
+import SimpleLog
 
 // -------------------------------------
 internal let runningUnitTests: Bool =
@@ -30,63 +31,6 @@ internal let runningUnitTests: Bool =
 
 
 // -------------------------------------
-public enum LogLevel: String
-{
-    case info = "info"
-    case warn = "warning"
-    case error = "error"
-    case critical = "critical"
-    case debug = "debug"
-}
-
-// -------------------------------------
-internal func log(
-    _ level: LogLevel = .info,
-    _ items: Any...,
-    separator: String = " ",
-    terminator: String = "\n",
-    function: StaticString = #function,
-    file: StaticString = #file,
-    line: UInt = #line)
-{
-    func makeStr(_ s: Any) -> String
-    {
-        return (s as? CustomStringConvertible)?.description
-            ?? String(describing: s)
-    }
-    
-    var message = "\(level.rawValue): JSONRPC: "
-    if let first = items.first
-    {
-        message += makeStr(first)
-        
-        for item in items.dropFirst() {
-            message += separator + makeStr(item)
-        }
-    }
-    
-    message += terminator
-    
-    #if DEBUG
-    message += ":\(file):\(line):\(function)"
-    #endif
-    
-    print(message, terminator: "")
-    
-    #if DEBUG
-    if !runningUnitTests
-    {
-        switch level
-        {
-            case .critical:
-                assertionFailure(message)
-            default: break
-        }
-    }
-    #endif
-}
-
-// -------------------------------------
 func trace(
     _ s: @autoclosure () -> String,
     function: StaticString = #function,
@@ -94,7 +38,7 @@ func trace(
     line: UInt = #line)
 {
     #if DEBUG
-    print(":\(function):\(line):\(file): \(s())")
+    log(.debug, ":\(function):\(line):\(file): \(s())")
     #endif
 }
 

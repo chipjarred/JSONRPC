@@ -21,7 +21,7 @@
 import Foundation
 
 // -------------------------------------
-public protocol JSONRPCSessionDelegate: JSONRPCLogger
+public protocol JSONRPCSessionDelegate
 {
     func willStart(session: JSONRPCSession)
     func didStart(session: JSONRPCSession)

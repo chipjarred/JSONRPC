@@ -19,12 +19,14 @@
 // SOFTWARE.
 
 import Foundation
-import NIX
-import HostOS
+
 import Async
+import HostOS
+import NIX
+import SimpleLog
 
 // -------------------------------------
-public class JSONRPCServer: JSONRPCLogger
+public class JSONRPCServer
 {
     private let socket: SocketIODescriptor
     private let address: SocketAddress
@@ -72,7 +74,7 @@ public class JSONRPCServer: JSONRPCLogger
                     if let error = NIX.unlink(unixPath),
                        error.errno != HostOS.ENOENT
                     {
-                        Self.log(
+                        log(
                             .error,
                             "Unable to remove Unix domain socket path, "
                             + "\"unixPath\": \(error)"
@@ -88,7 +90,7 @@ public class JSONRPCServer: JSONRPCLogger
         {
             case .success(let s): self.socket = s
             case .failure(let error):
-                Self.log(
+                log(
                     .error,
                     "Unable to create server listener socket: \(error)"
                 )
@@ -98,7 +100,7 @@ public class JSONRPCServer: JSONRPCLogger
         if let error = NIX.setsockopt(socket, .reuseAddress(true))
         {
             _ = NIX.close(socket)
-            Self.log(
+            log(
                 .error,
                 "Unable to set socket reuse address option: \(error)"
             )
@@ -108,7 +110,7 @@ public class JSONRPCServer: JSONRPCLogger
         if address.family == .inet6,
            let error = NIX.setsockopt(socket, .ipV6Only(false))
         {
-            Self.log(
+            log(
                 .warn,
                 "Unable to turn off ipV6Only option: \(error)"
             )
@@ -116,14 +118,14 @@ public class JSONRPCServer: JSONRPCLogger
 
         if let error = NIX.bind(self.socket, address)
         {
-            Self.log(.error, "Unable to bind server listener socket: \(error)")
+            log(.error, "Unable to bind server listener socket: \(error)")
             cleanUp()
             return nil
         }
         
         if let error = NIX.listen(self.socket, maximumConnections)
         {
-            Self.log(.error, "Unable to listen on socket: \(error)")
+            log(.error, "Unable to listen on socket: \(error)")
             cleanUp()
             return nil
         }
@@ -148,9 +150,9 @@ public class JSONRPCServer: JSONRPCLogger
             guard !closed else { return true }
             
             if let error = NIX.close(socket) {
-                Self.log(.warn, "Failed to close server socket: \(error)")
+                log(.warn, "Failed to close server socket: \(error)")
             }
-            Self.log(.info, "Server socket closed")
+            log(.info, "Server socket closed")
             closed = true
             return false
         }
@@ -161,7 +163,7 @@ public class JSONRPCServer: JSONRPCLogger
         {
             if let error = NIX.unlink(unixPath), error.errno != HostOS.ENOENT
             {
-                Self.log(
+                log(
                     .error,
                     "Unable to remove Unix domain socket path, \"unixPath\": "
                     + "\(error)"

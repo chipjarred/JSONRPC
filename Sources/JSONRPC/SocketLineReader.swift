@@ -20,22 +20,18 @@
 
 import Foundation
 import NIX
+import SimpleLog
 
 // -------------------------------------
 internal struct SocketLineReader
 {
     static let newLine: UInt8 = 0x0a
     var buffer: Data
-    var logger: JSONRPCLogger
     
     // -------------------------------------
     @inlinable
-    public init(
-        buffer: Data = Data(capacity: 4096),
-        logger: JSONRPCLogger = NullLogger())
-    {
+    public init(buffer: Data = Data(capacity: 4096)) {
         self.buffer = buffer
-        self.logger = logger
     }
     
     // -------------------------------------
@@ -65,7 +61,7 @@ internal struct SocketLineReader
             {
                 case .success(let readCount): bytesRead = readCount
                 case .failure(let error):
-                    logger.log(
+                    log(
                         .error,
                         "\(Self.self): Unable to read from peer socket: "
                         + "\(error)"
@@ -75,7 +71,7 @@ internal struct SocketLineReader
             
             if bytesRead == 0
             {
-                logger.log(
+                log(
                     .info,
                     "\(Self.self): Remote socket closed connection"
                 )

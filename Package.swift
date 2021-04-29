@@ -16,17 +16,17 @@ let package = Package(
             targets: ["JSONRPC-Examples"]),
     ],
     dependencies: [
-        // Dependencies declare other packages that this package depends on.
-        // .package(url: /* package url */, from: "1.0.0"),
-        .package(url: "https://github.com/chipjarred/NIX.git", from: "0.0.10"),
         .package(url: "https://github.com/chipjarred/Async.git", from: "1.0.3"),
+        .package(url: "https://github.com/chipjarred/NIX.git", from: "0.0.10"),
+        .package(
+            url: "https://github.com/chipjarred/SimpleLog.git",
+            .branch("main")
+        ),
     ],
     targets: [
-        // Targets are the basic building blocks of a package. A target can define a module or a test suite.
-        // Targets can depend on other targets in this package, and on products in packages this package depends on.
         .target(
             name: "JSONRPC",
-            dependencies: ["Async", "NIX"]),
+            dependencies: ["Async", "NIX", "SimpleLog"]),
         .target(
             name: "JSONRPC-Examples",
             dependencies: ["JSONRPC", "NIX"]),

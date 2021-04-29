@@ -22,9 +22,10 @@ import Foundation
 
 import Async
 import NIX
+import SimpleLog
 
 // -------------------------------------
-public class JSONRPCSession: JSONRPCLogger
+public class JSONRPCSession
 {
     typealias RequestID = Int
     public typealias RequestCompletion = (Result<AnyJSONData,Error>) -> Void
@@ -128,7 +129,7 @@ public class JSONRPCSession: JSONRPCLogger
         {
             case .success(let s): self.socket = s
             case .failure(let error):
-                Self.log(.error, "Unable to create session socket: \(error)")
+                log(.error, "Unable to create session socket: \(error)")
                 return nil
         }
         
@@ -137,7 +138,7 @@ public class JSONRPCSession: JSONRPCLogger
         if let error = NIX.connect(socket, serverAddress)
         {
             _ = close(socket)
-            Self.log(.error, "Unable to connect to \(serverAddress): \(error)")
+            log(.error, "Unable to connect to \(serverAddress): \(error)")
             return nil
         }
         self.state = .initialized
@@ -207,7 +208,7 @@ public class JSONRPCSession: JSONRPCLogger
             )
         }
         
-        self.log(.info, "Ended session with \(address).")
+        log(.info, "Ended session with \(address).")
         
         delegate?.didTerminate(session: self)
         server = nil
@@ -234,7 +235,7 @@ public class JSONRPCSession: JSONRPCLogger
     public final func terminate()
     {
         guard state != .terminated else { return }
-        self.log(.info, "Session termination requested.")
+        log(.info, "Session termination requested.")
         cleanUp()
     }
     
@@ -244,11 +245,11 @@ public class JSONRPCSession: JSONRPCLogger
         delegate?.willStart(session: self)
         
         state = .started
-        self.log(.info, "Started session with \(address).")
+        log(.info, "Started session with \(address).")
         
         defer { cleanUp() }
         
-        var lineReader = SocketLineReader(logger: self)
+        var lineReader = SocketLineReader()
         
         delegate?.didStart(session: self)
         
@@ -392,7 +393,7 @@ public class JSONRPCSession: JSONRPCLogger
                 do { try self.write(jsonData) }
                 catch
                 {
-                    self.log(
+                    log(
                         .error,
                         "Unable to send batch response: "
                         + "\(error.localizedDescription)"
@@ -403,7 +404,7 @@ public class JSONRPCSession: JSONRPCLogger
             }
             else
             {
-                self.log(
+                log(
                     .error,
                     "Unable to encode batch response: "
                     + "\(responses)"
@@ -659,7 +660,7 @@ public class JSONRPCSession: JSONRPCLogger
                 do { try self.write(jsonData) }
                 catch
                 {
-                    self.log(
+                    log(
                         .error,
                         "Unable to send batched requests: "
                         + "\(error.localizedDescription)"
@@ -670,7 +671,7 @@ public class JSONRPCSession: JSONRPCLogger
         }
         else
         {
-            self.log(.error, "Unable to encode batched requests: \(requests)")
+            log(.error, "Unable to encode batched requests: \(requests)")
             self.handleResponse(.init(error: .internalError))
         }
     }
